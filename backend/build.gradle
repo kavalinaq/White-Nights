@@ -37,6 +37,9 @@ dependencies {
     // Rate limiting
     implementation 'com.bucket4j:bucket4j-core:8.10.1'
     
+    // MinIO
+    implementation 'io.minio:minio:8.5.17'
+    
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'

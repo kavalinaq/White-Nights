@@ -40,8 +40,12 @@ class AuthIT {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private com.whitenights.common.ratelimit.RateLimitingService rateLimitingService;
+
     @BeforeEach
     void setUp() {
+        rateLimitingService.clearBuckets();
         refreshTokenRepository.deleteAll();
         tokenRepository.deleteAll();
         userRepository.deleteAll();

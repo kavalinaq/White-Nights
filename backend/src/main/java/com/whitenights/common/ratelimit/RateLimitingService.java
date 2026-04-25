@@ -18,6 +18,10 @@ public class RateLimitingService {
         return buckets.computeIfAbsent(key, this::newBucket);
     }
 
+    public void clearBuckets() {
+        buckets.clear();
+    }
+
     private Bucket newBucket(String key) {
         // Allow 5 requests per minute for sensitive endpoints
         return Bucket.builder()

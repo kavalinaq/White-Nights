@@ -41,6 +41,10 @@ public class User {
     @Builder.Default
     private boolean isVerified = false;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean isPrivate = false;
+
     @Column(columnDefinition = "TEXT")
     private String bio;
 
