@@ -7,6 +7,8 @@ import com.whitenights.common.storage.StorageService;
 import com.whitenights.post.repository.PostRepository;
 import com.whitenights.user.api.dto.UpdateProfileRequest;
 import com.whitenights.user.api.dto.UserProfileResponse;
+import com.whitenights.user.domain.FollowStatus;
+import com.whitenights.user.repository.FollowRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ public class ProfileService {
 
     private final UserRepository userRepository;
     private final PostRepository postRepository;
+    private final FollowRepository followRepository;
     private final StorageService storageService;
 
     @Value("${minio.bucket}")
@@ -31,17 +34,30 @@ public class ProfileService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         boolean isSelf = currentUser != null && currentUser.getUserId().equals(user.getUserId());
+
+        String followStatus = "none";
+        if (currentUser != null && !isSelf) {
+            followStatus = followRepository.findByFollowerAndFollowee(currentUser, user)
+                    .map(f -> f.getStatus().name())
+                    .orElse("none");
+        }
+
+        long followingCount = followRepository.countByFollowerAndStatus(user, FollowStatus.accepted);
+        long followerCount = followRepository.countByFolloweeAndStatus(user, FollowStatus.accepted);
+
+        boolean isFollower = "accepted".equals(followStatus);
         
         // Handle privacy
-        if (user.isPrivate() && !isSelf) {
-            // Check if following (to be implemented with Feature 03)
-            // For now, if private and not self, hide sensitive info
+        if (user.isPrivate() && !isSelf && !isFollower) {
             return UserProfileResponse.builder()
                     .userId(user.getUserId())
                     .nickname(user.getNickname())
                     .avatarUrl(user.getAvatarUrl())
                     .bio(user.getBio())
                     .isPrivate(true)
+                    .followStatus(followStatus)
+                    .followingCount(followingCount)
+                    .followerCount(followerCount)
                     .postCount(postRepository.countByUser(user))
                     .createdAt(user.getCreatedAt())
                     .build();
@@ -55,6 +71,9 @@ public class ProfileService {
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
                 .isPrivate(user.isPrivate())
+                .followStatus(followStatus)
+                .followingCount(followingCount)
+                .followerCount(followerCount)
                 .postCount(postRepository.countByUser(user))
                 .createdAt(user.getCreatedAt())
                 .build();

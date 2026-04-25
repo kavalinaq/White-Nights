@@ -14,7 +14,9 @@ public record UserProfileResponse(
     String avatarUrl,
     UserRole role,
     boolean isPrivate,
-    boolean isFollowing, // To be implemented with Feature 03
+    String followStatus, // none, pending, accepted
+    long followingCount,
+    long followerCount,
     long postCount,
     LocalDateTime createdAt
 ) {}

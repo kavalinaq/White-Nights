@@ -13,9 +13,13 @@ const FeedPage = () => {
       <h1>Feed Page</h1>
       <p>Welcome, {user?.nickname}!</p>
       <nav style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+        <Link to="/">Home</Link>
         <Link to={`/u/${user?.nickname}`}>My Profile</Link>
         <button onClick={logout}>Logout</button>
       </nav>
+      <div style={{ marginTop: '2rem' }}>
+        <p>Try visiting a profile to follow them, e.g. <code>/u/someuser</code></p>
+      </div>
     </div>
   );
 };

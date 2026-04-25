@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.whitenights.auth.api.dto.LoginRequest;
 import com.whitenights.auth.api.dto.RegisterRequest;
 import com.whitenights.auth.domain.VerificationToken;
+import com.whitenights.auth.repository.PasswordResetTokenRepository;
 import com.whitenights.auth.repository.RefreshTokenRepository;
 import com.whitenights.auth.repository.UserRepository;
 import com.whitenights.auth.repository.VerificationTokenRepository;
+import com.whitenights.user.repository.FollowRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,12 +43,20 @@ class AuthIT {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
+    private FollowRepository followRepository;
+
+    @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
     private com.whitenights.common.ratelimit.RateLimitingService rateLimitingService;
 
     @BeforeEach
     void setUp() {
         rateLimitingService.clearBuckets();
+        followRepository.deleteAll();
         refreshTokenRepository.deleteAll();
+        passwordResetTokenRepository.deleteAll();
         tokenRepository.deleteAll();
         userRepository.deleteAll();
     }
