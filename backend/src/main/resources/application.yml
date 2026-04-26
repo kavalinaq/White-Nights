@@ -36,3 +36,4 @@ minio:
   access-key: minioadmin
   secret-key: minioadmin
   bucket: avatars
+  posts-bucket: posts
