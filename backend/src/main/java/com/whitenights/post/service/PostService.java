@@ -54,12 +54,15 @@ public class PostService {
         return toSummary(postRepository.save(post), false, false);
     }
 
-    public PostSummaryResponse getById(Long postId, User viewer) {
+    public Post findById(Long postId, User viewer) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
-
         checkReadAccess(post, viewer);
-        return toSummary(post, false, false);
+        return post;
+    }
+
+    public PostSummaryResponse getById(Long postId, User viewer) {
+        return toSummary(findById(postId, viewer), false, false);
     }
 
     @Transactional
@@ -103,7 +106,7 @@ public class PostService {
         postRepository.delete(post);
     }
 
-    public List<PostSummaryResponse> getUserPosts(Long userId, Long cursor, int limit, User viewer) {
+    public List<Post> findUserPosts(Long userId, Long cursor, int limit, User viewer) {
         User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -118,8 +121,11 @@ public class PostService {
             }
         }
 
-        return postRepository.findByUserWithCursor(targetUser, cursor, PageRequest.of(0, Math.min(limit, 50)))
-                .stream()
+        return postRepository.findByUserWithCursor(targetUser, cursor, PageRequest.of(0, Math.min(limit, 50)));
+    }
+
+    public List<PostSummaryResponse> getUserPosts(Long userId, Long cursor, int limit, User viewer) {
+        return findUserPosts(userId, cursor, limit, viewer).stream()
                 .map(p -> toSummary(p, false, false))
                 .toList();
     }
