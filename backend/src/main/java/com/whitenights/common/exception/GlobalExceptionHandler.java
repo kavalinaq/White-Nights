@@ -24,6 +24,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS).body(Map.of("message", e.getMessage()));
     }
 
+    @ExceptionHandler(com.whitenights.common.exception.types.ForbiddenException.class)
+    public ResponseEntity<Map<String, String>> handleForbiddenException(com.whitenights.common.exception.types.ForbiddenException e) {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body(Map.of("message", e.getMessage()));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, String>> handleRuntimeException(RuntimeException e) {
         return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
