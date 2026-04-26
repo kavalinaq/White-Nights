@@ -10,6 +10,7 @@ import com.whitenights.auth.repository.UserRepository;
 import com.whitenights.auth.repository.VerificationTokenRepository;
 import com.whitenights.auth.repository.RefreshTokenRepository;
 import com.whitenights.auth.repository.PasswordResetTokenRepository;
+import com.whitenights.bookshelf.service.BookshelfService;
 import com.whitenights.common.email.EmailService;
 import com.whitenights.common.exception.types.ConflictException;
 import com.whitenights.common.exception.types.UnauthorizedException;
@@ -32,6 +33,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final EmailService emailService;
+    private final BookshelfService bookshelfService;
 
     @org.springframework.beans.factory.annotation.Value("${auth.jwt.refresh-expiration-ms}")
     private long refreshExpiration;
@@ -53,6 +55,7 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
+        bookshelfService.bootstrapShelves(user);
 
         String token = UUID.randomUUID().toString();
         VerificationToken verificationToken = VerificationToken.builder()
