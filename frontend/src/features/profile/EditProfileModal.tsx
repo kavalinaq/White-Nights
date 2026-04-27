@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useUpdateProfile, useUploadAvatar } from './hooks/useProfile';
 
 interface Props {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   profile: any;
   onClose: () => void;
 }

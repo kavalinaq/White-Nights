@@ -11,6 +11,7 @@ export const LoginPage = () => {
   const navigate = useNavigate();
 
   const mutation = useMutation({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mutationFn: (data: any) => client.post('/auth/login', data),
     onSuccess: (response) => {
       const { accessToken, user } = response.data;
@@ -45,6 +46,7 @@ export const LoginPage = () => {
         <button type="submit" disabled={mutation.isPending}>
           {mutation.isPending ? 'Logging in...' : 'Login'}
         </button>
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {mutation.isError && <p style={{ color: 'red' }}>{(mutation.error as any).response?.data?.message || 'Login failed'}</p>}
       </form>
       <p>

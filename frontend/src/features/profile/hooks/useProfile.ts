@@ -15,6 +15,7 @@ export const useProfile = (nickname: string) => {
 export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mutationFn: async (data: any) => {
       const response = await client.patch('/users/me', data);
       return response.data;

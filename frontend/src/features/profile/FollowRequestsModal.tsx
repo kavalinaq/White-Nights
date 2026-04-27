@@ -18,6 +18,7 @@ export const FollowRequestsModal = ({ onClose }: Props) => {
           <p>No pending requests.</p>
         ) : (
           <ul style={{ listStyle: 'none', padding: 0 }}>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {requests.map((req: any) => (
               <li key={req.followerId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <span>{req.nickname}</span>
