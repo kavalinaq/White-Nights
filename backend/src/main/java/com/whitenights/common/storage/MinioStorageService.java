@@ -1,6 +1,12 @@
 package com.whitenights.common.storage;
 
-import io.minio.*;
+import com.whitenights.common.exception.types.StorageException;
+import io.minio.BucketExistsArgs;
+import io.minio.MakeBucketArgs;
+import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
+import io.minio.SetBucketPolicyArgs;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,8 +44,8 @@ public class MinioStorageService implements StorageService {
 
             return endpoint + "/" + bucket + "/" + filename;
         } catch (Exception e) {
-            log.error("Error uploading file to MinIO", e);
-            throw new RuntimeException("Upload failed");
+          log.error("Error uploading file to MinIO bucket={} filename={}", bucket, filename, e);
+          throw new StorageException("Failed to upload file to storage", e);
         }
     }
 
@@ -53,7 +59,7 @@ public class MinioStorageService implements StorageService {
                             .build()
             );
         } catch (Exception e) {
-            log.error("Error deleting file from MinIO", e);
+          log.error("Error deleting file from MinIO bucket={} filename={}", bucket, filename, e);
         }
     }
 }

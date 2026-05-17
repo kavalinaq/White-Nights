@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useFollowers, useFollowing } from './hooks/useFollow';
+import {useState} from 'react';
+import {Link} from 'react-router-dom';
+import {useTranslation} from 'react-i18next';
+import {useFollowers, useFollowing} from './hooks/useFollow';
 
 interface Props {
   userId: number;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function FollowersModal({ userId, initialTab, onClose }: Props) {
+  const {t} = useTranslation();
   const [tab, setTab] = useState<'followers' | 'following'>(initialTab);
   const { data: followers, isLoading: loadingFollowers } = useFollowers(userId);
   const { data: following, isLoading: loadingFollowing } = useFollowing(userId);
@@ -20,22 +22,22 @@ export function FollowersModal({ userId, initialTab, onClose }: Props) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl flex flex-col overflow-hidden" style={{ maxHeight: '80vh' }}>
         <div className="flex border-b border-[#e8e2d9] flex-shrink-0">
-          {(['followers', 'following'] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`flex-1 py-3 text-sm font-medium border-none cursor-pointer transition capitalize
-                ${tab === t ? 'text-[#5b63d3] border-b-2 border-[#5b63d3] bg-white' : 'text-[#7a6f68] bg-white hover:text-[#2d2926]'}`}
+          {(['followers', 'following'] as const).map((key) => (
+              <button key={key} onClick={() => setTab(key)}
+                      className={`flex-1 py-3 text-sm font-medium border-none cursor-pointer transition
+                ${tab === key ? 'text-[#5b63d3] border-b-2 border-[#5b63d3] bg-white' : 'text-[#7a6f68] bg-white hover:text-[#2d2926]'}`}
             >
-              {t}
+                {t(`profile.${key}`)}
             </button>
           ))}
           <button onClick={onClose} className="px-4 text-[#7a6f68] hover:text-[#2d2926] bg-white border-none cursor-pointer text-lg">✕</button>
         </div>
 
         <div className="overflow-y-auto py-1">
-          {isLoading && <p className="text-[#7a6f68] text-sm text-center py-6">Loading…</p>}
+          {isLoading && <p className="text-[#7a6f68] text-sm text-center py-6">{t('common.loading')}</p>}
           {!isLoading && items?.length === 0 && (
             <p className="text-[#7a6f68] text-sm text-center py-6">
-              {tab === 'followers' ? 'No followers yet.' : 'Not following anyone yet.'}
+              {tab === 'followers' ? t('profile.noFollowers') : t('profile.noFollowing')}
             </p>
           )}
           {items?.map((u) => (

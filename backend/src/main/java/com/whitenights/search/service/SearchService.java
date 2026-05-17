@@ -9,13 +9,12 @@ import com.whitenights.post.service.PostService;
 import com.whitenights.search.api.dto.SearchResponse;
 import com.whitenights.search.api.dto.UserSearchResult;
 import com.whitenights.tag.api.dto.TagResponse;
-import com.whitenights.tag.domain.Tag;
 import com.whitenights.tag.repository.TagRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +28,7 @@ public class SearchService {
     private final TagRepository tagRepository;
     private final PostService postService;
 
+  @Transactional(readOnly = true)
     public SearchResponse search(String q, int limit) {
         int cap = Math.min(limit, GROUPED_LIMIT);
         PageRequest page = PageRequest.of(0, cap);
@@ -54,6 +54,7 @@ public class SearchService {
         return new SearchResponse(users, posts, tags);
     }
 
+  @Transactional(readOnly = true)
     public List<UserSearchResult> searchUsers(String q, Long cursor, int limit) {
         return userRepository
                 .searchByNickname(q, cursor, PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE)))
@@ -62,6 +63,7 @@ public class SearchService {
                 .toList();
     }
 
+  @Transactional(readOnly = true)
     public List<PostSummaryResponse> searchPosts(String q, Long cursor, int limit, User viewer) {
         List<Post> posts = postRepository.searchPosts(
                 q, cursor, PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE)));
@@ -70,6 +72,7 @@ public class SearchService {
                 .toList();
     }
 
+  @Transactional(readOnly = true)
     public List<TagResponse> searchTags(String q, Long cursor, int limit) {
         return tagRepository
                 .searchByName(q, cursor, PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE)))

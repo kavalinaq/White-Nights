@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import client from '../../../shared/api/client';
 
 export interface FollowUser {
@@ -36,7 +36,7 @@ export const useFollowing = (userId: number | undefined) => {
   });
 };
 
-export const useFollow = (targetUserId: number, targetNickname: string) => {
+export const useFollow = (targetUserId: number | undefined, targetNickname: string | undefined) => {
   const queryClient = useQueryClient();
 
   const invalidate = () =>

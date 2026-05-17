@@ -1,33 +1,38 @@
 package com.whitenights.bookshelf.api;
 
 import com.whitenights.auth.domain.User;
-import com.whitenights.auth.repository.UserRepository;
 import com.whitenights.bookshelf.api.dto.AddBookRequest;
 import com.whitenights.bookshelf.api.dto.BookResponse;
 import com.whitenights.bookshelf.api.dto.MoveBookRequest;
 import com.whitenights.bookshelf.api.dto.ReorderShelfRequest;
 import com.whitenights.bookshelf.api.dto.ShelfResponse;
 import com.whitenights.bookshelf.service.BookshelfService;
+import com.whitenights.common.security.CurrentUserResolver;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
 public class BookshelfController {
 
     private final BookshelfService bookshelfService;
-    private final UserRepository userRepository;
+  private final CurrentUserResolver currentUserResolver;
 
     @GetMapping("/api/users/{userId}/shelves")
     public List<ShelfResponse> getShelves(
             @PathVariable Long userId,
             @AuthenticationPrincipal String email) {
-        User viewer = email != null ? resolveUser(email) : null;
+      User viewer = email != null ? currentUserResolver.resolve(email) : null;
         return bookshelfService.getShelves(userId, viewer);
     }
 
@@ -37,7 +42,7 @@ public class BookshelfController {
             @PathVariable Long shelfId,
             @RequestBody @Valid AddBookRequest request,
             @AuthenticationPrincipal String email) {
-        return bookshelfService.addBook(shelfId, request, resolveUser(email));
+      return bookshelfService.addBook(shelfId, request, currentUserResolver.resolve(email));
     }
 
     @DeleteMapping("/api/books/{bookId}")
@@ -45,7 +50,7 @@ public class BookshelfController {
     public void deleteBook(
             @PathVariable Long bookId,
             @AuthenticationPrincipal String email) {
-        bookshelfService.deleteBook(bookId, resolveUser(email));
+      bookshelfService.deleteBook(bookId, currentUserResolver.resolve(email));
     }
 
     @PostMapping("/api/books/{bookId}/move")
@@ -54,7 +59,7 @@ public class BookshelfController {
             @PathVariable Long bookId,
             @RequestBody @Valid MoveBookRequest request,
             @AuthenticationPrincipal String email) {
-        bookshelfService.moveBook(bookId, request.toShelfId(), request.position(), resolveUser(email));
+      bookshelfService.moveBook(bookId, request.toShelfId(), request.position(), currentUserResolver.resolve(email));
     }
 
     @PostMapping("/api/shelves/{shelfId}/reorder")
@@ -63,11 +68,7 @@ public class BookshelfController {
             @PathVariable Long shelfId,
             @RequestBody @Valid ReorderShelfRequest request,
             @AuthenticationPrincipal String email) {
-        bookshelfService.reorderShelf(shelfId, request.bookIds(), resolveUser(email));
+      bookshelfService.reorderShelf(shelfId, request.bookIds(), currentUserResolver.resolve(email));
     }
 
-    private User resolveUser(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-    }
 }

@@ -1,10 +1,9 @@
 package com.whitenights.common.exception;
 
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-
-import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -34,7 +33,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage()));
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
+  @ExceptionHandler(com.whitenights.common.exception.types.BadRequestException.class)
+  public ResponseEntity<Map<String, String>> handleBadRequestException(com.whitenights.common.exception.types.BadRequestException e) {
+    return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+  }
+
+  @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+  public ResponseEntity<Map<String, String>> handleAccessDeniedException(org.springframework.security.access.AccessDeniedException e) {
+    return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body(Map.of("message", "Access denied"));
+  }
+
+  @ExceptionHandler(com.whitenights.common.exception.types.StorageException.class)
+  public ResponseEntity<Map<String, String>> handleStorageException(com.whitenights.common.exception.types.StorageException e) {
+    return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", e.getMessage()));
+  }
+
+  @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegalArgumentException(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
     }

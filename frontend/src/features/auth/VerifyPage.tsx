@@ -1,14 +1,17 @@
-import { useEffect, useRef } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import {useEffect, useRef} from 'react';
+import {Link, useSearchParams} from 'react-router-dom';
+import {useMutation} from '@tanstack/react-query';
+import {useTranslation} from 'react-i18next';
 import client from '../../shared/api/client';
+import {extractApiError} from '../../shared/api/extractApiError';
 
 export const VerifyPage = () => {
+  const {t} = useTranslation();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const hasRun = useRef(false);
   const mutation = useMutation({
-    mutationFn: (t: string) => client.post(`/auth/verify?token=${t}`),
+    mutationFn: (tok: string) => client.post(`/auth/verify?token=${tok}`),
   });
 
   useEffect(() => {
@@ -29,8 +32,10 @@ export const VerifyPage = () => {
       </div>
   );
 
-  if (mutation.isPending) return wrap('⏳', 'Verifying your account…', <p>Please wait a moment.</p>);
-  if (mutation.isSuccess) return wrap('✅', 'Email verified!', <><p>You can now log in to your account.</p><Link to="/login" className="inline-block mt-3 text-[#5b63d3] font-medium hover:underline">Go to Login →</Link></>);
-  if (mutation.isError) return wrap('❌', 'Verification failed', <><p>{(mutation.error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Invalid or expired token.'}</p><Link to="/register" className="inline-block mt-3 text-[#5b63d3] font-medium hover:underline">Register again</Link></>);
-  return wrap('🔗', 'Missing token', <p>No verification token found in the URL.</p>);
+  if (mutation.isPending) return wrap('⏳', t('auth.verify.title'), <p>{t('common.loading')}</p>);
+  if (mutation.isSuccess) return wrap('✅', t('auth.verify.success'), <><p>{t('auth.login.title')}</p><Link to="/login"
+                                                                                                           className="inline-block mt-3 text-[#5b63d3] font-medium hover:underline">{t('auth.verify.goToLogin')} →</Link></>);
+  if (mutation.isError) return wrap('❌', t('auth.verify.failure'), <><p>{extractApiError(mutation.error) ?? t('errors.generic')}</p><Link to="/register"
+                                                                                                                                          className="inline-block mt-3 text-[#5b63d3] font-medium hover:underline">{t('auth.register.submit')}</Link></>);
+  return wrap('🔗', t('errors.notFound'), <p>{t('auth.verify.failure')}</p>);
 };

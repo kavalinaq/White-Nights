@@ -1,7 +1,7 @@
 package com.whitenights.post.api;
 
 import com.whitenights.auth.domain.User;
-import com.whitenights.auth.repository.UserRepository;
+import com.whitenights.common.security.CurrentUserResolver;
 import com.whitenights.post.api.dto.CreatePostRequest;
 import com.whitenights.post.api.dto.PostSummaryResponse;
 import com.whitenights.post.api.dto.UpdatePostRequest;
@@ -9,15 +9,22 @@ import com.whitenights.post.domain.Post;
 import com.whitenights.post.service.InteractionService;
 import com.whitenights.post.service.PostService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,7 +32,7 @@ public class PostController {
 
     private final PostService postService;
     private final InteractionService interactionService;
-    private final UserRepository userRepository;
+  private final CurrentUserResolver currentUserResolver;
 
     @PostMapping("/api/posts")
     @ResponseStatus(HttpStatus.CREATED)
@@ -33,14 +40,14 @@ public class PostController {
             @RequestPart("data") @Valid CreatePostRequest request,
             @RequestPart(value = "image", required = false) MultipartFile image,
             @AuthenticationPrincipal String email) {
-        return postService.create(request, image, resolveUser(email));
+      return postService.create(request, image, currentUserResolver.resolve(email));
     }
 
     @GetMapping("/api/posts/{id}")
     public PostSummaryResponse getById(
             @PathVariable Long id,
             @AuthenticationPrincipal String email) {
-        User viewer = email != null ? resolveUser(email) : null;
+      User viewer = email != null ? currentUserResolver.resolve(email) : null;
         Post post = postService.findById(id, viewer);
         boolean liked = viewer != null && interactionService.isLiked(id, viewer.getUserId());
         boolean saved = viewer != null && interactionService.isSaved(id, viewer.getUserId());
@@ -53,7 +60,7 @@ public class PostController {
             @RequestPart("data") @Valid UpdatePostRequest request,
             @RequestPart(value = "image", required = false) MultipartFile image,
             @AuthenticationPrincipal String email) {
-        return postService.update(id, request, image, resolveUser(email));
+      return postService.update(id, request, image, currentUserResolver.resolve(email));
     }
 
     @DeleteMapping("/api/posts/{id}")
@@ -61,7 +68,7 @@ public class PostController {
     public void delete(
             @PathVariable Long id,
             @AuthenticationPrincipal String email) {
-        postService.delete(id, resolveUser(email));
+      postService.delete(id, currentUserResolver.resolve(email));
     }
 
     @GetMapping("/api/users/{userId}/posts")
@@ -70,7 +77,7 @@ public class PostController {
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "20") int limit,
             @AuthenticationPrincipal String email) {
-        User viewer = email != null ? resolveUser(email) : null;
+      User viewer = email != null ? currentUserResolver.resolve(email) : null;
         List<Post> posts = postService.findUserPosts(userId, cursor, limit, viewer);
         return enrichWithFlags(posts, viewer);
     }
@@ -87,8 +94,4 @@ public class PostController {
                 .toList();
     }
 
-    private User resolveUser(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-    }
 }

@@ -3,13 +3,19 @@ package com.whitenights.admin.api;
 import com.whitenights.admin.api.dto.ChangeRoleRequest;
 import com.whitenights.admin.api.dto.StatsResponse;
 import com.whitenights.admin.service.AdminService;
-import com.whitenights.auth.domain.User;
-import com.whitenights.auth.repository.UserRepository;
+import com.whitenights.common.security.CurrentUserResolver;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -17,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     private final AdminService adminService;
-    private final UserRepository userRepository;
+    private final CurrentUserResolver currentUserResolver;
 
     @PostMapping("/users/{id}/role")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -25,7 +31,7 @@ public class AdminController {
             @PathVariable Long id,
             @RequestBody @Valid ChangeRoleRequest request,
             @AuthenticationPrincipal String email) {
-        adminService.changeRole(id, request.role(), resolveUser(email));
+        adminService.changeRole(id, request.role(), currentUserResolver.resolve(email));
     }
 
     @PostMapping("/users/{id}/unban")
@@ -33,7 +39,7 @@ public class AdminController {
     public void unban(
             @PathVariable Long id,
             @AuthenticationPrincipal String email) {
-        adminService.unban(id, resolveUser(email));
+        adminService.unban(id, currentUserResolver.resolve(email));
     }
 
     @DeleteMapping("/users/{id}")
@@ -41,16 +47,12 @@ public class AdminController {
     public void deleteUser(
             @PathVariable Long id,
             @AuthenticationPrincipal String email) {
-        adminService.deleteUser(id, resolveUser(email));
+        adminService.deleteUser(id, currentUserResolver.resolve(email));
     }
 
     @GetMapping("/stats")
     public StatsResponse getStats(@AuthenticationPrincipal String email) {
-        return adminService.getStats(resolveUser(email));
+        return adminService.getStats(currentUserResolver.resolve(email));
     }
 
-    private User resolveUser(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-    }
 }

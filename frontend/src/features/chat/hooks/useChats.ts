@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import client from '../../../shared/api/client';
 
 export interface ChatPreview {
@@ -7,6 +7,16 @@ export interface ChatPreview {
   isGroup: boolean;
   memberCount: number;
   lastMessage: ChatMessage | null;
+  avatarUrl: string | null;
+  ownerId: number | null;
+}
+
+export interface ChatMember {
+  userId: number;
+  nickname: string;
+  avatarUrl: string | null;
+  role: 'owner' | 'member';
+  joinedAt: string;
 }
 
 export interface ChatMessage {
@@ -62,5 +72,32 @@ export function useDeleteChat() {
 export function useDeleteMessage() {
   return useMutation({
     mutationFn: (messageId: number) => client.delete(`/messages/${messageId}`),
+  });
+}
+
+export function useChatMembers(chatId: number | undefined) {
+  return useQuery({
+    queryKey: ['chat-members', chatId],
+    queryFn: async () => {
+      const res = await client.get<ChatMember[]>(`/chats/${chatId}/members`);
+      return res.data;
+    },
+    enabled: !!chatId,
+  });
+}
+
+export function useUpdateChatAvatar(chatId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return client.post<ChatPreview>(`/chats/${chatId}/avatar`, formData, {
+        headers: {'Content-Type': 'multipart/form-data'},
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: ['chats']});
+    },
   });
 }

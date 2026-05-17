@@ -3,6 +3,8 @@ package com.whitenights.post.service;
 import com.whitenights.auth.domain.User;
 import com.whitenights.auth.domain.UserRole;
 import com.whitenights.auth.repository.UserRepository;
+import com.whitenights.common.exception.types.BadRequestException;
+import com.whitenights.common.exception.types.ForbiddenException;
 import com.whitenights.common.exception.types.NotFoundException;
 import com.whitenights.common.storage.StorageService;
 import com.whitenights.post.api.dto.CreatePostRequest;
@@ -15,14 +17,16 @@ import com.whitenights.tag.domain.Tag;
 import com.whitenights.tag.service.TagService;
 import com.whitenights.user.domain.FollowStatus;
 import com.whitenights.user.repository.FollowRepository;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -55,6 +59,7 @@ public class PostService {
         return toSummary(postRepository.save(post), false, false);
     }
 
+  @Transactional(readOnly = true)
     public Post findById(Long postId, User viewer) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new NotFoundException("Post not found"));
@@ -72,7 +77,7 @@ public class PostService {
                 .orElseThrow(() -> new NotFoundException("Post not found"));
 
         if (!post.getUser().getUserId().equals(currentUser.getUserId())) {
-            throw new RuntimeException("Access denied");
+          throw new ForbiddenException("Access denied");
         }
 
         if (request.title() != null) post.setTitle(request.title());
@@ -100,13 +105,14 @@ public class PostService {
         boolean isModerator = currentUser.getRole() == UserRole.moderator || currentUser.getRole() == UserRole.admin;
 
         if (!isAuthor && !isModerator) {
-            throw new RuntimeException("Access denied");
+          throw new ForbiddenException("Access denied");
         }
 
         deleteImageIfPresent(post.getImageUrl());
         postRepository.delete(post);
     }
 
+  @Transactional(readOnly = true)
     public List<Post> findUserPosts(Long userId, Long cursor, int limit, User viewer) {
         User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
@@ -180,7 +186,7 @@ public class PostService {
         if (image == null || image.isEmpty()) return null;
         String contentType = image.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new RuntimeException("Only image files are allowed");
+          throw new BadRequestException("Only image files are allowed");
         }
         String filename = UUID.randomUUID() + "_" + image.getOriginalFilename();
         return storageService.uploadFile(postsBucket, filename, image);

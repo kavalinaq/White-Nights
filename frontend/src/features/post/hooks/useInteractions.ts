@@ -1,7 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { InfiniteData } from '@tanstack/react-query';
+import {useCallback} from 'react';
+import type {InfiniteData} from '@tanstack/react-query';
+import {useMutation, useQueryClient} from '@tanstack/react-query';
 import client from '../../../shared/api/client';
-import type { Post } from '../../../shared/components/PostCard';
+import type {Post} from '../../../shared/components/PostCard';
 
 type PatchFn = (p: Post) => Post;
 
@@ -54,8 +55,11 @@ export function useInteractions(postId: number) {
     onSettled: invalidate,
   });
 
-  const recordView = () =>
-    client.post(`/posts/${postId}/view`).catch(() => {});
+  const recordView = useCallback(
+      () => client.post(`/posts/${postId}/view`).catch(() => {
+      }),
+      [postId]
+  );
 
   return { like, unlike, save, unsave, recordView };
 }

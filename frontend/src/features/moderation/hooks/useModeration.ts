@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import client from '../../../shared/api/client';
 
 export type ReportStatus = 'pending' | 'in_review' | 'resolved';
@@ -12,6 +12,12 @@ export interface Report {
   reason: string;
   status: ReportStatus;
   createdAt: string;
+  reporterUserId?: number | null;
+  reporterNickname?: string | null;
+  targetUserNickname?: string | null;
+  targetPostTitle?: string | null;
+  targetCommentPostId?: number | null;
+  targetCommentText?: string | null;
 }
 
 export function useReportQueue(status?: string) {

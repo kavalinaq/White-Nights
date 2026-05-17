@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { usePost } from './hooks/usePost';
-import { useInteractions } from './hooks/useInteractions';
-import { useComments, useReplies, type Comment } from './hooks/useComments';
-import { useDeletePost } from './hooks/usePostMutations';
-import { EditPostModal } from './EditPostModal';
-import { useAuthStore } from '../../shared/store/useAuthStore';
-import { Avatar } from '../../shared/components/Avatar';
+import {useEffect, useState} from 'react';
+import {Link, useNavigate, useParams} from 'react-router-dom';
+import {useTranslation} from 'react-i18next';
+import {usePost} from './hooks/usePost';
+import {useInteractions} from './hooks/useInteractions';
+import {type Comment, useComments, useReplies} from './hooks/useComments';
+import {useDeletePost} from './hooks/usePostMutations';
+import {EditPostModal} from './EditPostModal';
+import {useAuthStore} from '../../shared/store/useAuthStore';
+import {Avatar} from '../../shared/components/Avatar';
+import {ReportModal} from '../moderation/ReportModal';
 
 interface CommentItemProps {
   comment: Comment;
@@ -18,9 +20,11 @@ interface CommentItemProps {
 }
 
 function CommentItem({ comment, postAuthorNickname, currentUser, isAuthenticated, addComment, deleteComment }: CommentItemProps) {
+  const {t} = useTranslation();
   const [showReplies, setShowReplies] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [reportingId, setReportingId] = useState<number | null>(null);
 
   const { data: replies = [], isLoading: repliesLoading } = useReplies(comment.commentId, showReplies);
 
@@ -61,15 +65,23 @@ function CommentItem({ comment, postAuthorNickname, currentUser, isAuthenticated
             onClick={() => setIsReplying(v => !v)}
             className="text-xs text-[#7a6f68] hover:text-[#5b63d3] bg-transparent border-none cursor-pointer transition"
           >
-            {isReplying ? 'Cancel' : 'Reply'}
+            {isReplying ? t('common.cancel') : t('common.reply')}
           </button>
         )}
         <button
           onClick={() => setShowReplies(v => !v)}
           className="text-xs text-[#7a6f68] hover:text-[#5b63d3] bg-transparent border-none cursor-pointer transition"
         >
-          {showReplies ? 'Hide replies' : 'Show replies'}
+          {showReplies ? t('post.hideReplies') : t('post.showReplies')}
         </button>
+        {isAuthenticated && currentUser?.nickname !== comment.author.nickname && (
+            <button
+                onClick={() => setReportingId(comment.commentId)}
+                className="text-xs text-[#b0a9a1] hover:text-red-500 bg-transparent border-none cursor-pointer transition ml-auto"
+            >
+              ⚑ {t('common.report')}
+            </button>
+        )}
       </div>
 
       {isReplying && (
@@ -77,7 +89,7 @@ function CommentItem({ comment, postAuthorNickname, currentUser, isAuthenticated
           <input
             value={replyText}
             onChange={e => setReplyText(e.target.value)}
-            placeholder={`Reply to @${comment.author.nickname}…`}
+            placeholder={`${t('common.reply')} @${comment.author.nickname}…`}
             maxLength={2000}
             autoFocus
             className="flex-1 px-3 py-1.5 rounded-lg border border-[#e8e2d9] bg-white text-sm focus:outline-none focus:border-[#5b63d3] focus:ring-2 focus:ring-[#5b63d3]/20 transition"
@@ -87,17 +99,21 @@ function CommentItem({ comment, postAuthorNickname, currentUser, isAuthenticated
             disabled={addComment.isPending || !replyText.trim()}
             className="px-3 py-1.5 rounded-lg bg-[#5b63d3] hover:bg-[#4951c4] text-white text-xs font-medium border-none cursor-pointer transition disabled:opacity-50"
           >
-            Reply
+            {t('common.reply')}
           </button>
         </form>
+      )}
+
+      {reportingId !== null && (
+          <ReportModal targetType="comment" targetId={reportingId} onClose={() => setReportingId(null)}/>
       )}
 
       {showReplies && (
         <div className="mt-3 ml-6 space-y-2">
           {repliesLoading ? (
-            <p className="text-xs text-[#7a6f68]">Loading…</p>
+              <p className="text-xs text-[#7a6f68]">{t('common.loading')}</p>
           ) : replies.length === 0 ? (
-            <p className="text-xs text-[#7a6f68] italic">No replies yet.</p>
+              <p className="text-xs text-[#7a6f68] italic">{t('post.noReplies')}</p>
           ) : (
             replies.map(reply => {
               const canDeleteReply = currentUser?.nickname === reply.author.nickname
@@ -118,6 +134,13 @@ function CommentItem({ comment, postAuthorNickname, currentUser, isAuthenticated
                         className="ml-auto text-xs text-[#b0a9a1] hover:text-red-400 bg-transparent border-none cursor-pointer transition"
                       >✕</button>
                     )}
+                    {isAuthenticated && currentUser?.nickname !== reply.author.nickname && (
+                        <button
+                            onClick={() => setReportingId(reply.commentId)}
+                            className={`text-xs text-[#b0a9a1] hover:text-red-500 bg-transparent border-none cursor-pointer transition ${canDeleteReply ? '' : 'ml-auto'}`}
+                            title={t('common.report')}
+                        >⚑</button>
+                    )}
                   </div>
                   <p className="text-sm text-[#2d2926] m-0">{reply.text}</p>
                 </div>
@@ -131,6 +154,7 @@ function CommentItem({ comment, postAuthorNickname, currentUser, isAuthenticated
 }
 
 export function PostPage() {
+  const {t} = useTranslation();
   const { id } = useParams<{ id: string }>();
   const postId = Number(id);
   const navigate = useNavigate();
@@ -146,15 +170,15 @@ export function PostPage() {
 
   useEffect(() => {
     if (postId) recordView();
-  }, [postId]);
+  }, [postId, recordView]);
 
-  if (isLoading) return <div className="px-8 py-8 text-center text-[#7a6f68]">Loading…</div>;
-  if (!post) return <div className="px-8 py-8 text-center text-[#7a6f68]">Post not found.</div>;
+  if (isLoading) return <div className="px-8 py-8 text-center text-[#7a6f68]">{t('common.loading')}</div>;
+  if (!post) return <div className="px-8 py-8 text-center text-[#7a6f68]">{t('post.notFound')}</div>;
 
   const isMine = user?.nickname === post.authorInfo.nickname;
 
   const handleDelete = async () => {
-    if (!confirm('Delete this post?')) return;
+    if (!confirm(t('post.deleteConfirm'))) return;
     await deletePost.mutateAsync(postId);
     navigate('/');
   };
@@ -168,7 +192,7 @@ export function PostPage() {
 
   return (
     <div className="px-8 py-6">
-      <Link to="/" className="text-sm text-[#7a6f68] hover:text-[#5b63d3] transition-colors">← Back to feed</Link>
+      <Link to="/" className="text-sm text-[#7a6f68] hover:text-[#5b63d3] transition-colors">← {t('post.backToFeed')}</Link>
 
       <article className="mt-4 bg-white rounded-2xl border border-[#e8e2d9] shadow-sm overflow-hidden">
         {post.imageUrl && (
@@ -190,9 +214,9 @@ export function PostPage() {
             {isMine && (
               <div className="flex gap-2">
                 <button onClick={() => setShowEdit(true)}
-                  className="px-3 py-1 text-xs rounded-lg border border-[#e8e2d9] bg-white text-[#7a6f68] cursor-pointer hover:border-[#5b63d3] transition">Edit</button>
+                        className="px-3 py-1 text-xs rounded-lg border border-[#e8e2d9] bg-white text-[#7a6f68] cursor-pointer hover:border-[#5b63d3] transition">{t('common.edit')}</button>
                 <button onClick={handleDelete} disabled={deletePost.isPending}
-                  className="px-3 py-1 text-xs rounded-lg bg-red-500 hover:bg-red-600 text-white border-none cursor-pointer transition disabled:opacity-50">Delete</button>
+                        className="px-3 py-1 text-xs rounded-lg bg-red-500 hover:bg-red-600 text-white border-none cursor-pointer transition disabled:opacity-50">{t('common.delete')}</button>
               </div>
             )}
           </div>
@@ -226,24 +250,24 @@ export function PostPage() {
                 disabled={save.isPending || unsave.isPending}
                 className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm border cursor-pointer transition disabled:opacity-50 ${post.saved ? 'bg-amber-50 border-amber-200 text-amber-500 font-semibold' : 'bg-white border-[#e8e2d9] text-[#7a6f68] hover:border-amber-200 hover:text-amber-400'}`}
               >
-                {post.saved ? '🔖 Saved' : '🏷️ Save'}
+                {post.saved ? `🔖 ${t('post.saved')}` : `🏷️ ${t('post.savedAction')}`}
               </button>
-              <span className="ml-auto text-xs text-[#7a6f68] self-center">👁 {post.viewCount} views</span>
+              <span className="ml-auto text-xs text-[#7a6f68] self-center">👁 {t('post.views', {count: post.viewCount})}</span>
             </div>
           )}
 
           {/* Comments */}
           <div className="mt-5">
-            <h3 className="font-serif font-bold text-[#1c1714] mb-4">Comments ({post.commentCount})</h3>
+            <h3 className="font-serif font-bold text-[#1c1714] mb-4">{t('post.commentsCount', {count: post.commentCount})}</h3>
 
             {isAuthenticated && (
               <form onSubmit={handleComment} className="flex gap-2 mb-5">
                 <input value={commentText} onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Add a comment…" maxLength={2000}
+                       placeholder={t('post.addComment')} maxLength={2000}
                   className="flex-1 px-3 py-2 rounded-lg border border-[#e8e2d9] bg-white text-sm focus:outline-none focus:border-[#5b63d3] focus:ring-2 focus:ring-[#5b63d3]/20 transition" />
                 <button type="submit" disabled={addComment.isPending || !commentText.trim()}
                   className="px-4 py-2 rounded-lg bg-[#5b63d3] hover:bg-[#4951c4] text-white text-sm font-medium border-none cursor-pointer transition disabled:opacity-50">
-                  Post
+                  {t('post.post')}
                 </button>
               </form>
             )}
@@ -265,7 +289,7 @@ export function PostPage() {
             {hasMore && (
               <button onClick={() => loadMore()} disabled={commentsFetching}
                 className="mt-4 w-full py-2 rounded-xl border border-[#e8e2d9] bg-white text-sm text-[#7a6f68] hover:border-[#5b63d3] cursor-pointer transition disabled:opacity-50">
-                {commentsFetching ? 'Loading…' : 'Load more comments'}
+                {commentsFetching ? t('common.loading') : t('post.loadMoreComments')}
               </button>
             )}
           </div>

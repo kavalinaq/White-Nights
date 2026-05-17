@@ -7,11 +7,10 @@ import com.whitenights.moderation.api.dto.ReportResponse;
 import com.whitenights.moderation.domain.Report;
 import com.whitenights.moderation.domain.ReportStatus;
 import com.whitenights.moderation.repository.ReportRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -45,7 +44,21 @@ public class ReportService {
     }
 
     private ReportResponse toResponse(Report r) {
-        return new ReportResponse(r.getReportId(), r.getTargetType(), r.getTargetId(),
-                r.getReason(), r.getStatus(), r.getCreatedAt());
+      Long reporterUserId = r.getReporter() != null ? r.getReporter().getUserId() : null;
+      String reporterNickname = r.getReporter() != null ? r.getReporter().getNickname() : null;
+      return new ReportResponse(
+          r.getReportId(),
+          r.getTargetType(),
+          r.getTargetId(),
+          r.getReason(),
+          r.getStatus(),
+          r.getCreatedAt(),
+          reporterUserId,
+          reporterNickname,
+          null,
+          null,
+          null,
+          null
+      );
     }
 }

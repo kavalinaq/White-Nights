@@ -1,7 +1,8 @@
-import { Link } from 'react-router-dom';
-import { useAuthStore } from '../store/useAuthStore';
-import { useInteractions } from '../../features/post/hooks/useInteractions';
-import { Avatar } from './Avatar';
+import {Link} from 'react-router-dom';
+import {useTranslation} from 'react-i18next';
+import {useAuthStore} from '../store/useAuthStore';
+import {useInteractions} from '../../features/post/hooks/useInteractions';
+import {Avatar} from './Avatar';
 
 export interface Tag {
   tagId: number;
@@ -36,6 +37,7 @@ interface Props {
 }
 
 export function PostCard({ post, onReport }: Props) {
+  const {t} = useTranslation();
   const { isAuthenticated } = useAuthStore();
   const { like, unlike, save, unsave } = useInteractions(post.postId);
 
@@ -101,7 +103,7 @@ export function PostCard({ post, onReport }: Props) {
                   className={`flex items-center gap-1 cursor-pointer border-none bg-transparent p-0 text-sm transition-colors disabled:opacity-50
                     ${post.saved ? 'text-amber-500 font-semibold' : 'hover:text-amber-400'}`}
                 >
-                  🔖 {post.saved ? 'Saved' : 'Save'}
+                  🔖 {post.saved ? t('post.saved') : t('post.savedAction')}
                 </button>
               </>
             ) : (
@@ -115,7 +117,7 @@ export function PostCard({ post, onReport }: Props) {
             {isAuthenticated && onReport && (
               <button onClick={() => onReport(post.postId)}
                 className="cursor-pointer border-none bg-transparent p-0 text-xs text-[#b0a9a1] hover:text-red-400 transition-colors">
-                ⚑ Report
+                ⚑ {t('common.report')}
               </button>
             )}
           </div>

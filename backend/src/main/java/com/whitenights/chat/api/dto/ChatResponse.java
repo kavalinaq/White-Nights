@@ -5,5 +5,7 @@ public record ChatResponse(
         String name,
         boolean isGroup,
         int memberCount,
-        MessageResponse lastMessage
+        MessageResponse lastMessage,
+        String avatarUrl,
+        Long ownerId
 ) {}

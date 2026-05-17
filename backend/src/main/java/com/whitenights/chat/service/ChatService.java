@@ -2,6 +2,7 @@ package com.whitenights.chat.service;
 
 import com.whitenights.auth.domain.User;
 import com.whitenights.auth.repository.UserRepository;
+import com.whitenights.chat.api.dto.ChatMemberResponse;
 import com.whitenights.chat.api.dto.ChatResponse;
 import com.whitenights.chat.api.dto.MessageResponse;
 import com.whitenights.chat.domain.Chat;
@@ -11,18 +12,20 @@ import com.whitenights.chat.domain.Message;
 import com.whitenights.chat.repository.ChatMemberRepository;
 import com.whitenights.chat.repository.ChatRepository;
 import com.whitenights.chat.repository.MessageRepository;
+import com.whitenights.common.exception.types.BadRequestException;
 import com.whitenights.common.exception.types.ForbiddenException;
 import com.whitenights.common.exception.types.NotFoundException;
 import com.whitenights.common.storage.StorageService;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -39,8 +42,25 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public List<ChatResponse> getChats(User user) {
-        return chatRepository.findByMember(user.getUserId()).stream()
-                .map(c -> toChatResponse(c, user))
+      List<Chat> chats = chatRepository.findByMember(user.getUserId());
+      if (chats.isEmpty()) {
+        return List.of();
+      }
+
+      List<Long> chatIds = chats.stream().map(Chat::getChatId).toList();
+      Map<Long, List<ChatMember>> membersByChat = chatMemberRepository
+          .findByChatIdInFetchUser(chatIds).stream()
+          .collect(Collectors.groupingBy(m -> m.getId().getChatId()));
+      Map<Long, Message> latestByChat = messageRepository
+          .findLatestMessagesByChatIdIn(chatIds).stream()
+          .collect(Collectors.toMap(m -> m.getChat().getChatId(), m -> m));
+
+      return chats.stream()
+          .map(c -> toChatResponse(
+              c,
+              user,
+              membersByChat.getOrDefault(c.getChatId(), List.of()),
+              latestByChat.get(c.getChatId())))
                 .toList();
     }
 
@@ -54,6 +74,7 @@ public class ChatService {
         return createGroup(name, memberIds, creator);
     }
 
+  @Transactional(readOnly = true)
     public List<MessageResponse> getMessages(Long chatId, Long cursor, int limit, User user) {
         requireMember(chatId, user);
         return messageRepository.findByChatWithCursor(chatId, cursor, PageRequest.of(0, Math.min(limit, 50)))
@@ -121,7 +142,7 @@ public class ChatService {
         requireMember(chatId, sender);
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new RuntimeException("Only image files are allowed");
+          throw new BadRequestException("Only image files are allowed");
         }
         String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
         String imageUrl = storageService.uploadFile(chatBucket, filename, file);
@@ -190,7 +211,12 @@ public class ChatService {
     private ChatResponse toChatResponse(Chat chat, User viewer) {
         List<ChatMember> members = chatMemberRepository.findByIdChatId(chat.getChatId());
         List<Message> latest = messageRepository.findLatestMessage(chat.getChatId(), PageRequest.of(0, 1));
-        MessageResponse lastMsg = latest.isEmpty() ? null : toMessageResponse(latest.get(0));
+      Message latestMessage = latest.isEmpty() ? null : latest.get(0);
+      return toChatResponse(chat, viewer, members, latestMessage);
+    }
+
+  private ChatResponse toChatResponse(Chat chat, User viewer, List<ChatMember> members, Message latestMessage) {
+    MessageResponse lastMsg = latestMessage != null ? toMessageResponse(latestMessage) : null;
 
         String displayName = chat.isGroup() ? chat.getName()
                 : members.stream()
@@ -199,7 +225,69 @@ public class ChatService {
                 .map(m -> m.getUser().getNickname())
                 .orElse("Unknown");
 
-        return new ChatResponse(chat.getChatId(), displayName, chat.isGroup(), members.size(), lastMsg);
+    Long ownerId = members.stream()
+        .filter(m -> m.getRole() == ChatMemberRole.owner)
+        .map(m -> m.getId().getUserId())
+        .findFirst()
+        .orElse(null);
+
+    return new ChatResponse(
+        chat.getChatId(),
+        displayName,
+        chat.isGroup(),
+        members.size(),
+        lastMsg,
+        chat.getAvatarUrl(),
+        ownerId
+    );
+  }
+
+  @Transactional(readOnly = true)
+  public List<ChatMemberResponse> getMembers(Long chatId, User requester) {
+    requireMember(chatId, requester);
+    return chatMemberRepository.findByIdChatId(chatId).stream()
+        .map(m -> new ChatMemberResponse(
+            m.getUser().getUserId(),
+            m.getUser().getNickname(),
+            m.getUser().getAvatarUrl(),
+            m.getRole().name(),
+            m.getJoinedAt()
+        ))
+        .toList();
+  }
+
+  @Transactional
+  public ChatResponse updateAvatar(Long chatId, MultipartFile file, User requester) {
+    Chat chat = requireChat(chatId);
+    if (!chat.isGroup()) {
+      throw new ForbiddenException("Avatar can only be set for group chats");
+    }
+    requireOwner(chatId, requester);
+    String contentType = file.getContentType();
+    if (contentType == null || !contentType.startsWith("image/")) {
+      throw new BadRequestException("Only image files are allowed");
+    }
+    String filename = "avatar_" + chatId + "_" + UUID.randomUUID();
+    String url = storageService.uploadFile(chatBucket, filename, file);
+
+    String previousUrl = chat.getAvatarUrl();
+    chat.setAvatarUrl(url);
+    chatRepository.save(chat);
+
+    deleteAvatarBlob(previousUrl);
+    return toChatResponse(chat, requester);
+  }
+
+  private void deleteAvatarBlob(String url) {
+    if (url == null || url.isBlank()) {
+      return;
+    }
+    int slash = url.lastIndexOf('/');
+    if (slash < 0 || slash == url.length() - 1) {
+      return;
+    }
+    String filename = url.substring(slash + 1);
+    storageService.deleteFile(chatBucket, filename);
     }
 
     public MessageResponse toMessageResponse(Message m) {

@@ -1,11 +1,31 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import client from '../../../shared/api/client';
 
+export interface Profile {
+  userId: number;
+  nickname: string;
+  email?: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  isPrivate: boolean;
+  isBlocked: boolean;
+  followStatus: 'accepted' | 'pending' | null;
+  postCount: number;
+  followerCount: number;
+  followingCount: number;
+}
+
+export interface UpdateProfilePayload {
+  nickname?: string;
+  bio?: string;
+  isPrivate?: boolean;
+}
+
 export const useProfile = (nickname: string) => {
-  return useQuery({
+  return useQuery<Profile>({
     queryKey: ['profile', nickname],
     queryFn: async () => {
-      const response = await client.get(`/users/${nickname}`);
+      const response = await client.get<Profile>(`/users/${nickname}`);
       return response.data;
     },
     enabled: !!nickname,
@@ -15,9 +35,8 @@ export const useProfile = (nickname: string) => {
 export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mutationFn: async (data: any) => {
-      const response = await client.patch('/users/me', data);
+    mutationFn: async (data: UpdateProfilePayload) => {
+      const response = await client.patch<Profile>('/users/me', data);
       return response.data;
     },
     onSuccess: (data) => {

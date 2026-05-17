@@ -1,9 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { useSearchParams, Link } from 'react-router-dom';
+import {useEffect, useRef, useState} from 'react';
+import {useMutation} from '@tanstack/react-query';
+import {Link, useSearchParams} from 'react-router-dom';
+import {useTranslation} from 'react-i18next';
 import client from '../../shared/api/client';
+import {extractApiError} from '../../shared/api/extractApiError';
 
 export const ResetPasswordPage = () => {
+  const {t} = useTranslation();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
   const [newPassword, setNewPassword] = useState('');
@@ -19,7 +22,10 @@ export const ResetPasswordPage = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirm) { setMatchError('Passwords do not match.'); return; }
+    if (newPassword !== confirm) {
+      setMatchError(t('errors.generic'));
+      return;
+    }
     setMatchError('');
     mutation.mutate({ token, newPassword });
   };
@@ -28,10 +34,10 @@ export const ResetPasswordPage = () => {
       <div className="flex justify-center px-4">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-md border border-[#e2dcd5] p-12 text-center">
           <div className="text-5xl mb-4">🔗</div>
-          <h1 className="font-serif text-3xl font-bold text-[#1c1714] mb-3">Invalid link</h1>
-          <p className="text-[#7a6f68] text-base mb-6">Missing reset token.</p>
+          <h1 className="font-serif text-3xl font-bold text-[#1c1714] mb-3">{t('errors.notFound')}</h1>
+          <p className="text-[#7a6f68] text-base mb-6">{t('errors.generic')}</p>
           <Link to="/forgot-password" className="text-[#5b63d3] font-medium hover:underline text-sm">
-            Request a new reset link
+            {t('auth.forgot.title')}
           </Link>
         </div>
       </div>
@@ -41,10 +47,9 @@ export const ResetPasswordPage = () => {
       <div className="flex justify-center px-4">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-md border border-[#e2dcd5] p-12 text-center">
           <div className="text-5xl mb-4">✅</div>
-          <h1 className="font-serif text-3xl font-bold text-[#1c1714] mb-3">Password changed!</h1>
-          <p className="text-[#7a6f68] text-base mb-6">You can now log in with your new password.</p>
+          <h1 className="font-serif text-3xl font-bold text-[#1c1714] mb-3">{t('auth.reset.success')}</h1>
           <Link to="/login" className="text-[#5b63d3] font-medium hover:underline text-sm">
-            Go to Login →
+            ← {t('auth.verify.goToLogin')}
           </Link>
         </div>
       </div>
@@ -53,12 +58,12 @@ export const ResetPasswordPage = () => {
   return (
       <div className="flex justify-center px-4">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-md border border-[#e2dcd5] p-12">
-          <h1 className="font-serif text-3xl font-bold text-[#1c1714] text-center mb-8">Set new password</h1>
+          <h1 className="font-serif text-3xl font-bold text-[#1c1714] text-center mb-8">{t('auth.reset.title')}</h1>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <input
                 ref={inputRef}
                 type="password"
-                placeholder="New password (min 8 chars)"
+                placeholder={t('auth.reset.newPassword')}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 minLength={8}
@@ -67,7 +72,7 @@ export const ResetPasswordPage = () => {
             />
             <input
                 type="password"
-                placeholder="Confirm new password"
+                placeholder={t('auth.reset.confirmPassword')}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 required
@@ -79,11 +84,11 @@ export const ResetPasswordPage = () => {
                 disabled={mutation.isPending}
                 className="w-full py-3 bg-[#5b63d3] hover:bg-[#4951c4] disabled:opacity-50 text-white rounded-lg text-sm font-semibold mt-2 cursor-pointer border-none transition"
             >
-              {mutation.isPending ? 'Saving…' : 'Set password'}
+              {mutation.isPending ? t('common.saving') : t('auth.reset.submit')}
             </button>
             {mutation.isError && (
                 <p className="text-red-500 text-sm">
-                  {(mutation.error as { response?: { data?: { detail?: string } } }).response?.data?.detail || 'Reset failed. Link may have expired.'}
+                  {extractApiError(mutation.error) ?? t('errors.generic')}
                 </p>
             )}
           </form>

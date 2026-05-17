@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useProfile } from '../profile/hooks/useProfile';
-import { useShelves, type Shelf, type Book } from './hooks/useShelves';
-import { useAddBook, useDeleteBook, useMoveBook } from './hooks/useShelfMutations';
-import { useAuthStore } from '../../shared/store/useAuthStore';
+import {useState} from 'react';
+import {Link, useParams} from 'react-router-dom';
+import {useTranslation} from 'react-i18next';
+import {useProfile} from '../profile/hooks/useProfile';
+import {type Book, type Shelf, useShelves} from './hooks/useShelves';
+import {useAddBook, useDeleteBook, useMoveBook} from './hooks/useShelfMutations';
+import {useAuthStore} from '../../shared/store/useAuthStore';
 
 export function ShelvesPage() {
+  const {t} = useTranslation();
   const { nickname } = useParams<{ nickname: string }>();
   const { user } = useAuthStore();
   const { data: profile, isLoading: profileLoading } = useProfile(nickname ?? '');
@@ -29,13 +31,13 @@ export function ShelvesPage() {
     setTitle(''); setAuthor(''); setAddingTo(null);
   };
 
-  if (profileLoading || isLoading) return <div className="px-8 py-12 text-center text-[#7a6f68]">Loading…</div>;
-  if (!profile) return <div className="px-8 py-12 text-center text-[#7a6f68]">User not found.</div>;
+  if (profileLoading || isLoading) return <div className="px-8 py-12 text-center text-[#7a6f68]">{t('common.loading')}</div>;
+  if (!profile) return <div className="px-8 py-12 text-center text-[#7a6f68]">{t('errors.notFound')}</div>;
 
   return (
     <div className="px-8 py-6">
       <Link to={`/u/${nickname}`} className="text-sm text-[#7a6f68] hover:text-[#5b63d3] transition-colors">← @{nickname}</Link>
-      <h2 className="font-serif text-2xl font-bold text-[#1c1714] mt-3 mb-6">BOOKSHELVES</h2>
+      <h2 className="font-serif text-2xl font-bold text-[#1c1714] mt-3 mb-6">{t('nav.shelves')}</h2>
 
       <div className="space-y-4">
         {shelves?.map((shelf) => (
@@ -50,18 +52,18 @@ export function ShelvesPage() {
       {addingTo !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
-            <h3 className="font-serif font-bold text-[#1c1714] mb-4">Add a book</h3>
+            <h3 className="font-serif font-bold text-[#1c1714] mb-4">{t('shelves.addBook')}</h3>
             <form onSubmit={handleAdd} className="flex flex-col gap-3">
-              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" required maxLength={255}
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('shelves.title')} required maxLength={255}
                 className="w-full px-3 py-2.5 rounded-lg border border-[#e8e2d9] bg-white text-sm focus:outline-none focus:border-[#5b63d3] focus:ring-2 focus:ring-[#5b63d3]/20 transition" />
-              <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Author" required maxLength={255}
+              <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder={t('shelves.author')} required maxLength={255}
                 className="w-full px-3 py-2.5 rounded-lg border border-[#e8e2d9] bg-white text-sm focus:outline-none focus:border-[#5b63d3] focus:ring-2 focus:ring-[#5b63d3]/20 transition" />
               <div className="flex gap-2 justify-end mt-1">
                 <button type="button" onClick={() => setAddingTo(null)}
-                  className="px-4 py-2 rounded-lg border border-[#e8e2d9] bg-white text-sm text-[#7a6f68] cursor-pointer hover:border-[#5b63d3] transition">Cancel</button>
+                        className="px-4 py-2 rounded-lg border border-[#e8e2d9] bg-white text-sm text-[#7a6f68] cursor-pointer hover:border-[#5b63d3] transition">{t('common.cancel')}</button>
                 <button type="submit" disabled={addBook.isPending}
                   className="px-4 py-2 rounded-lg bg-[#5b63d3] hover:bg-[#4951c4] text-white text-sm font-semibold border-none cursor-pointer transition disabled:opacity-50">
-                  {addBook.isPending ? 'Adding…' : 'Add'}
+                  {addBook.isPending ? `${t('common.saving')}` : t('shelves.addBook')}
                 </button>
               </div>
             </form>
@@ -82,6 +84,7 @@ interface ShelfCardProps {
 }
 
 function ShelfCard({ shelf, allShelves, isOwn, onAdd, onDelete, onMove }: ShelfCardProps) {
+  const {t} = useTranslation();
   return (
     <section className="bg-white rounded-xl border border-[#e8e2d9] shadow-sm p-5">
       <div className="flex justify-between items-center mb-4">
@@ -89,13 +92,13 @@ function ShelfCard({ shelf, allShelves, isOwn, onAdd, onDelete, onMove }: ShelfC
         {isOwn && (
           <button onClick={onAdd}
             className="text-xs px-3 py-1.5 rounded-full border border-[#5b63d3] text-[#5b63d3] bg-white hover:bg-[#5b63d3] hover:text-white cursor-pointer transition">
-            + Add book
+            + {t('shelves.addBook')}
           </button>
         )}
       </div>
 
       {shelf.books.length === 0 ? (
-        <p className="text-sm text-[#b0a9a1]">No books yet.</p>
+          <p className="text-sm text-[#b0a9a1]">{t('shelves.empty')}</p>
       ) : (
         <ul className="space-y-2">
           {shelf.books.map((book: Book) => (

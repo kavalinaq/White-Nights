@@ -1,8 +1,8 @@
-import { create } from 'zustand';
+import {create} from 'zustand';
 import client from '../api/client';
 
 interface User {
-  id: string;
+  id: number;
   nickname: string;
   email: string;
   role: 'user' | 'moderator' | 'admin';

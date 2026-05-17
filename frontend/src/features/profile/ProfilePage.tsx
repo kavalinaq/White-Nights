@@ -1,18 +1,20 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import { useProfile } from './hooks/useProfile';
-import { useAuthStore } from '../../shared/store/useAuthStore';
-import { useState } from 'react';
-import { EditProfileModal } from './EditProfileModal';
-import { useFollow, useFollowRequests } from './hooks/useFollow';
-import { FollowRequestsModal } from './FollowRequestsModal';
-import { FollowersModal } from './FollowersModal';
-import { usePosts } from '../post/hooks/usePosts';
-import { PostCard } from '../../shared/components/PostCard';
-import { useCreateChat } from '../chat/hooks/useChats';
-import { ReportModal } from '../moderation/ReportModal';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {useNavigate, useParams} from 'react-router-dom';
+import {useTranslation} from 'react-i18next';
+import {useProfile} from './hooks/useProfile';
+import {useMonthlyPages} from './hooks/useMonthlyPages';
+import {useAuthStore} from '../../shared/store/useAuthStore';
+import {useState} from 'react';
+import {EditProfileModal} from './EditProfileModal';
+import {useFollow, useFollowRequests} from './hooks/useFollow';
+import {FollowRequestsModal} from './FollowRequestsModal';
+import {FollowersModal} from './FollowersModal';
+import {usePosts} from '../post/hooks/usePosts';
+import {PostCard} from '../../shared/components/PostCard';
+import {useCreateChat} from '../chat/hooks/useChats';
+import {ReportModal} from '../moderation/ReportModal';
+import {useMutation, useQueryClient} from '@tanstack/react-query';
 import client from '../../shared/api/client';
-import { CreatePostModal } from '../post/CreatePostModal';  // <-- добавлен импорт
+import {CreatePostModal} from '../post/CreatePostModal';
 
 function useBlockUser(nickname: string | undefined) {
   const queryClient = useQueryClient();
@@ -30,15 +32,17 @@ function useBlockUser(nickname: string | undefined) {
 export const ProfilePage = () => {
   const { nickname } = useParams<{ nickname: string }>();
   const { data: profile, isLoading, error } = useProfile(nickname!);
+  const {data: monthlyPages} = useMonthlyPages(nickname);
   const { user: currentUser } = useAuthStore();
   const navigate = useNavigate();
+  const {t} = useTranslation();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
   const [followModal, setFollowModal] = useState<'followers' | 'following' | null>(null);
   const [reportPostId, setReportPostId] = useState<number | null>(null);
   const [showReportUser, setShowReportUser] = useState(false);
-  const [showCreatePost, setShowCreatePost] = useState(false);  // <-- новое состояние
+  const [showCreatePost, setShowCreatePost] = useState(false);
 
   const { follow, unfollow } = useFollow(profile?.userId, profile?.nickname);
   const { data: requests } = useFollowRequests();
@@ -50,9 +54,9 @@ export const ProfilePage = () => {
   const { items: posts, hasMore, loadMore, isFetching } = usePosts(canSeePosts ? profile?.userId : undefined);
   const hasPendingRequests = isSelf && requests && requests.length > 0;
 
-  if (isLoading) return <div className="px-8 py-12 text-center text-[#7a6f68]">Loading…</div>;
-  if (error) return <div className="px-8 py-12 text-center text-red-500">Error loading profile</div>;
-  if (!profile) return <div className="px-8 py-12 text-center text-[#7a6f68]">User not found</div>;
+  if (isLoading) return <div className="px-8 py-12 text-center text-[#7a6f68]">{t('common.loading')}</div>;
+  if (error) return <div className="px-8 py-12 text-center text-red-500">{t('profile.errorLoading')}</div>;
+  if (!profile) return <div className="px-8 py-12 text-center text-[#7a6f68]">{t('profile.userNotFound')}</div>;
 
   const handleMessage = async () => {
     const result = await createChat.mutateAsync({ peerId: profile.userId });
@@ -62,10 +66,12 @@ export const ProfilePage = () => {
   const renderFollowButton = () => {
     if (isSelf) return null;
     if (profile.followStatus === 'accepted')
-      return <button onClick={() => unfollow.mutate()} className="px-4 py-1.5 rounded-full border border-[#e8e2d9] bg-white text-sm font-medium text-[#7a6f68] cursor-pointer hover:border-red-300 hover:text-red-500 transition">Unfollow</button>;
+      return <button onClick={() => unfollow.mutate()}
+                     className="px-4 py-1.5 rounded-full border border-[#e8e2d9] bg-white text-sm font-medium text-[#7a6f68] cursor-pointer hover:border-red-300 hover:text-red-500 transition">{t('profile.unfollow')}</button>;
     if (profile.followStatus === 'pending')
-      return <button disabled className="px-4 py-1.5 rounded-full border border-[#e8e2d9] bg-white text-sm font-medium text-[#7a6f68] opacity-60 cursor-not-allowed">Requested</button>;
-    return <button onClick={() => follow.mutate()} className="px-4 py-1.5 rounded-full bg-[#5b63d3] hover:bg-[#4951c4] text-white text-sm font-semibold border-none cursor-pointer transition">Follow</button>;
+      return <button disabled className="px-4 py-1.5 rounded-full border border-[#e8e2d9] bg-white text-sm font-medium text-[#7a6f68] opacity-60 cursor-not-allowed">{t('profile.requested')}</button>;
+    return <button onClick={() => follow.mutate()}
+                   className="px-4 py-1.5 rounded-full bg-[#5b63d3] hover:bg-[#4951c4] text-white text-sm font-semibold border-none cursor-pointer transition">{t('profile.follow')}</button>;
   };
 
   return (
@@ -89,15 +95,15 @@ export const ProfilePage = () => {
               <div className="flex gap-6">
                 <div className="text-center">
                   <div className="font-bold text-[#1c1714]">{profile.postCount}</div>
-                  <div className="text-xs text-[#7a6f68]">posts</div>
+                  <div className="text-xs text-[#7a6f68]">{t('profile.posts')}</div>
                 </div>
                 <button onClick={() => setFollowModal('followers')} className="text-center bg-transparent border-none cursor-pointer p-0 hover:opacity-70 transition">
                   <div className="font-bold text-[#1c1714]">{profile.followerCount}</div>
-                  <div className="text-xs text-[#7a6f68]">followers</div>
+                  <div className="text-xs text-[#7a6f68]">{t('profile.followers')}</div>
                 </button>
                 <button onClick={() => setFollowModal('following')} className="text-center bg-transparent border-none cursor-pointer p-0 hover:opacity-70 transition">
                   <div className="font-bold text-[#1c1714]">{profile.followingCount}</div>
-                  <div className="text-xs text-[#7a6f68]">following</div>
+                  <div className="text-xs text-[#7a6f68]">{t('profile.following')}</div>
                 </button>
               </div>
 
@@ -105,17 +111,17 @@ export const ProfilePage = () => {
               <div className="flex gap-2 flex-wrap">
                 {isSelf ? (
                     <>
-                      <button onClick={() => setIsEditModalOpen(true)} className="px-4 py-1.5 rounded-full border border-[#e8e2d9] bg-white text-sm font-medium text-[#2d2926] cursor-pointer hover:border-[#5b63d3] hover:text-[#5b63d3] transition">Edit Profile</button>
-                      {/* Новая кнопка создания поста */}
+                      <button onClick={() => setIsEditModalOpen(true)}
+                              className="px-4 py-1.5 rounded-full border border-[#e8e2d9] bg-white text-sm font-medium text-[#2d2926] cursor-pointer hover:border-[#5b63d3] hover:text-[#5b63d3] transition">{t('profile.edit')}</button>
                       <button
                           onClick={() => setShowCreatePost(true)}
                           className="px-4 py-1.5 rounded-full bg-[#5b63d3] hover:bg-[#4951c4] text-white text-sm font-semibold border-none cursor-pointer transition"
                       >
-                        + New post
+                        + {t('profile.newPost')}
                       </button>
                       {hasPendingRequests && (
                           <button onClick={() => setIsRequestsModalOpen(true)} className="px-4 py-1.5 rounded-full bg-[#5b63d3] hover:bg-[#4951c4] text-white text-sm font-semibold border-none cursor-pointer transition">
-                            Requests ({requests.length})
+                            {t('profile.requests')} ({requests.length})
                           </button>
                       )}
                     </>
@@ -125,7 +131,7 @@ export const ProfilePage = () => {
                       {currentUser && (
                           <button onClick={handleMessage} disabled={createChat.isPending}
                                   className="px-4 py-1.5 rounded-full border border-[#e8e2d9] bg-white text-sm font-medium text-[#2d2926] cursor-pointer hover:border-[#5b63d3] hover:text-[#5b63d3] transition disabled:opacity-50">
-                            {createChat.isPending ? '…' : 'Message'}
+                            {createChat.isPending ? '…' : t('profile.message')}
                           </button>
                       )}
                       {currentUser && (
@@ -134,13 +140,13 @@ export const ProfilePage = () => {
                               disabled={block.isPending || unblock.isPending}
                               className="px-4 py-1.5 rounded-full border border-[#e8e2d9] bg-white text-sm font-medium text-[#7a6f68] cursor-pointer hover:border-red-300 hover:text-red-500 transition disabled:opacity-50"
                           >
-                            {profile.isBlocked ? 'Unblock' : 'Block'}
+                            {profile.isBlocked ? t('profile.unblock') : t('profile.block')}
                           </button>
                       )}
                       {currentUser && (
                           <button onClick={() => setShowReportUser(true)}
                                   className="px-4 py-1.5 rounded-full border border-[#e8e2d9] bg-white text-sm font-medium text-[#b0a9a1] cursor-pointer hover:border-red-300 hover:text-red-400 transition">
-                            ⚑ Report
+                            ⚑ {t('common.report')}
                           </button>
                       )}
                     </>
@@ -150,19 +156,34 @@ export const ProfilePage = () => {
           </div>
         </div>
 
+        {/* Monthly pages banner */}
+        {monthlyPages && (
+            <div className="mb-6 rounded-2xl shadow-md bg-gradient-to-r from-[#5b63d3] via-[#7e85e4] to-[#d35b9b] text-white px-6 py-5 flex items-center justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-wider opacity-85 font-semibold">📖 {t('tracker.title')}</div>
+                <div className="text-lg sm:text-xl font-bold mt-1">
+                  {isSelf
+                      ? t('profile.monthlyPagesSelf', {pages: monthlyPages.pagesRead})
+                      : t('profile.monthlyPages', {nickname: profile.nickname, pages: monthlyPages.pagesRead})}
+                </div>
+              </div>
+              <div className="text-4xl sm:text-5xl font-bold opacity-90">{monthlyPages.pagesRead}</div>
+            </div>
+        )}
+
         {/* Posts */}
         {!canSeePosts ? (
             <div className="bg-white rounded-2xl border border-[#e8e2d9] p-10 text-center">
               <div className="text-4xl mb-3">🔒</div>
-              <h3 className="font-serif font-bold text-[#1c1714] mb-1">Private Account</h3>
-              <p className="text-sm text-[#7a6f68]">Follow to see their posts.</p>
+              <h3 className="font-serif font-bold text-[#1c1714] mb-1">{t('profile.privateTitle')}</h3>
+              <p className="text-sm text-[#7a6f68]">{t('profile.privateHint')}</p>
             </div>
         ) : (
             <>
               {posts.length === 0 && !isFetching && (
                   <div className="text-center py-12 text-[#7a6f68]">
                     <div className="text-4xl mb-3">📝</div>
-                    <p className="text-sm">No posts yet.</p>
+                    <p className="text-sm">{t('profile.noPosts')}</p>
                   </div>
               )}
               <div className="space-y-4">
@@ -171,7 +192,7 @@ export const ProfilePage = () => {
               {hasMore && (
                   <button onClick={() => loadMore()} disabled={isFetching}
                           className="mt-5 w-full py-2.5 rounded-xl border border-[#e8e2d9] bg-white text-sm text-[#7a6f68] hover:border-[#5b63d3] hover:text-[#5b63d3] cursor-pointer transition disabled:opacity-50">
-                    {isFetching ? 'Loading…' : 'Load more'}
+                    {isFetching ? t('common.loading') : t('common.loadMore')}
                   </button>
               )}
             </>

@@ -11,5 +11,11 @@ public record ReportResponse(
         Long targetId,
         String reason,
         ReportStatus status,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        Long reporterUserId,
+        String reporterNickname,
+        String targetUserNickname,
+        String targetPostTitle,
+        Long targetCommentPostId,
+        String targetCommentText
 ) {}

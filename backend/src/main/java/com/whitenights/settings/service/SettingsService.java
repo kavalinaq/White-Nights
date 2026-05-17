@@ -3,21 +3,19 @@ package com.whitenights.settings.service;
 import com.whitenights.auth.domain.User;
 import com.whitenights.auth.repository.RefreshTokenRepository;
 import com.whitenights.auth.repository.UserRepository;
-import com.whitenights.common.email.EmailService;
 import com.whitenights.common.exception.types.UnauthorizedException;
 import com.whitenights.post.api.dto.PostSummaryResponse;
 import com.whitenights.post.domain.Post;
 import com.whitenights.post.service.InteractionService;
 import com.whitenights.post.service.PostService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
+import com.whitenights.support.service.SupportService;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -28,11 +26,9 @@ public class SettingsService {
     private final InteractionService interactionService;
     private final PostService postService;
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
+  private final SupportService supportService;
 
-    @Value("${support.email}")
-    private String supportEmail;
-
+  @Transactional(readOnly = true)
     public List<PostSummaryResponse> getSavedPosts(User user, Long cursor, int limit) {
         List<InteractionService.PostSummaryHelper> helpers =
                 interactionService.getSavedPosts(user.getUserId(), cursor, limit);
@@ -59,7 +55,7 @@ public class SettingsService {
     }
 
     public void sendSupportMessage(User user, String subject, String message) {
-        emailService.sendSupportMessage(user.getEmail(), subject, message);
+      supportService.submit(user, subject, message);
     }
 
     @Transactional

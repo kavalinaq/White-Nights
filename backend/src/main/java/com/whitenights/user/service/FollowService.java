@@ -2,6 +2,7 @@ package com.whitenights.user.service;
 
 import com.whitenights.auth.domain.User;
 import com.whitenights.auth.repository.UserRepository;
+import com.whitenights.common.exception.types.BadRequestException;
 import com.whitenights.common.exception.types.NotFoundException;
 import com.whitenights.user.domain.Follow;
 import com.whitenights.user.domain.FollowStatus;
@@ -20,7 +21,7 @@ public class FollowService {
     @Transactional
     public void follow(Long targetUserId, User currentUser) {
         if (currentUser.getUserId().equals(targetUserId)) {
-            throw new RuntimeException("You cannot follow yourself");
+            throw new BadRequestException("You cannot follow yourself");
         }
 
         User targetUser = userRepository.findById(targetUserId)

@@ -3,25 +3,24 @@ package com.whitenights.auth.service;
 import com.whitenights.auth.api.dto.AuthResponse;
 import com.whitenights.auth.api.dto.RegisterRequest;
 import com.whitenights.auth.api.dto.ResetPassword;
+import com.whitenights.auth.domain.PasswordResetToken;
 import com.whitenights.auth.domain.User;
 import com.whitenights.auth.domain.VerificationToken;
-import com.whitenights.auth.domain.PasswordResetToken;
+import com.whitenights.auth.repository.PasswordResetTokenRepository;
+import com.whitenights.auth.repository.RefreshTokenRepository;
 import com.whitenights.auth.repository.UserRepository;
 import com.whitenights.auth.repository.VerificationTokenRepository;
-import com.whitenights.auth.repository.RefreshTokenRepository;
-import com.whitenights.auth.repository.PasswordResetTokenRepository;
 import com.whitenights.bookshelf.service.BookshelfService;
 import com.whitenights.common.email.EmailService;
 import com.whitenights.common.exception.types.ConflictException;
 import com.whitenights.common.exception.types.NotFoundException;
 import com.whitenights.common.exception.types.UnauthorizedException;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -75,7 +74,7 @@ public class AuthService {
                 .orElseThrow(() -> new NotFoundException("Invalid token"));
 
         if (verificationToken.isExpired()) {
-            throw new RuntimeException("Token expired");
+            throw new UnauthorizedException("Token expired");
         }
 
         User user = verificationToken.getUser();
@@ -178,7 +177,7 @@ public class AuthService {
 
         if (resetToken.isExpired()) {
             passwordResetTokenRepository.delete(resetToken);
-            throw new RuntimeException("Token expired");
+            throw new UnauthorizedException("Token expired");
         }
 
         User user = resetToken.getUser();

@@ -3,18 +3,25 @@ package com.whitenights.post.service;
 import com.whitenights.auth.domain.User;
 import com.whitenights.auth.domain.UserRole;
 import com.whitenights.common.exception.types.ForbiddenException;
-import com.whitenights.post.api.dto.CommentResponse;
-import com.whitenights.post.domain.*;
 import com.whitenights.common.exception.types.NotFoundException;
-import com.whitenights.post.repository.*;
+import com.whitenights.post.api.dto.CommentResponse;
+import com.whitenights.post.domain.Comment;
+import com.whitenights.post.domain.Like;
+import com.whitenights.post.domain.Post;
+import com.whitenights.post.domain.Save;
+import com.whitenights.post.domain.View;
+import com.whitenights.post.repository.CommentRepository;
+import com.whitenights.post.repository.LikeRepository;
+import com.whitenights.post.repository.PostRepository;
+import com.whitenights.post.repository.SaveRepository;
+import com.whitenights.post.repository.ViewRepository;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -116,6 +123,7 @@ public class InteractionService {
         commentRepository.delete(comment);
     }
 
+    @Transactional(readOnly = true)
     public List<CommentResponse> getComments(Long postId, Long cursor, int limit) {
         return commentRepository.findByPostIdWithCursor(postId, cursor, PageRequest.of(0, Math.min(limit, 50)))
                 .stream()
@@ -123,6 +131,7 @@ public class InteractionService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<CommentResponse> getReplies(Long parentCommentId, Long cursor, int limit) {
         if (!commentRepository.existsById(parentCommentId)) {
             throw new NotFoundException("Comment not found");
@@ -133,6 +142,7 @@ public class InteractionService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<PostSummaryHelper> getSavedPosts(Long userId, Long cursor, int limit) {
         return saveRepository.findByUserIdWithCursor(userId, cursor, PageRequest.of(0, Math.min(limit, 50)))
                 .stream()

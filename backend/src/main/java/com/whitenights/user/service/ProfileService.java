@@ -2,6 +2,7 @@ package com.whitenights.user.service;
 
 import com.whitenights.auth.domain.User;
 import com.whitenights.auth.repository.UserRepository;
+import com.whitenights.common.exception.types.BadRequestException;
 import com.whitenights.common.exception.types.ConflictException;
 import com.whitenights.common.exception.types.NotFoundException;
 import com.whitenights.common.storage.StorageService;
@@ -12,13 +13,12 @@ import com.whitenights.user.domain.FollowStatus;
 import com.whitenights.user.domain.UserBlock;
 import com.whitenights.user.repository.FollowRepository;
 import com.whitenights.user.repository.UserBlockRepository;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -114,7 +114,7 @@ public class ProfileService {
         // Validate file type
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new RuntimeException("Only image files are allowed");
+            throw new BadRequestException("Only image files are allowed");
         }
 
         // Delete old avatar if exists

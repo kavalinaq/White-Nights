@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { useChats, useCreateChat, useDeleteChat, useDeleteMessage, type ChatMessage, type ChatPreview } from './hooks/useChats';
-import { useMessages } from './hooks/useMessages';
-import { useChatSocket } from './hooks/useChatSocket';
-import { useAuthStore } from '../../shared/store/useAuthStore';
-import { useUnreadStore, isUnread } from '../../shared/store/useUnreadStore';
+import {useEffect, useRef, useState} from 'react';
+import {Link, useNavigate, useParams} from 'react-router-dom';
+import {useQuery} from '@tanstack/react-query';
+import {useTranslation} from 'react-i18next';
+import {type ChatMessage, type ChatPreview, useChats, useCreateChat, useDeleteChat, useDeleteMessage} from './hooks/useChats';
+import {GroupInfoModal} from './GroupInfoModal';
+import {extractApiError} from '../../shared/api/extractApiError';
+import {useMessages} from './hooks/useMessages';
+import {useChatSocket} from './hooks/useChatSocket';
+import {useAuthStore} from '../../shared/store/useAuthStore';
+import {isUnread, useUnreadStore} from '../../shared/store/useUnreadStore';
 import client from '../../shared/api/client';
 
 interface UserSuggestion {
@@ -28,6 +31,7 @@ function useUserSuggestions(query: string) {
 }
 
 export function ChatsPage() {
+  const {t} = useTranslation();
   const { id } = useParams<{ id: string }>();
   const activeId = id ? Number(id) : undefined;
   const { data: chats, isLoading } = useChats();
@@ -71,8 +75,8 @@ export function ChatsPage() {
       setPeerNickname(''); setShowNewChat(false);
       navigate(`/chat/${result.data.chatId}`);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail;
-      setNewChatError(msg || 'User not found or error starting chat.');
+      const msg = extractApiError(err);
+      setNewChatError(msg || t('chat.userNotFoundOrError'));
     }
   };
 
@@ -87,7 +91,10 @@ export function ChatsPage() {
   const handleNewGroupChat = async (e: React.FormEvent) => {
     e.preventDefault();
     setGroupChatError('');
-    if (!groupName.trim()) { setGroupChatError('Group name is required.'); return; }
+    if (!groupName.trim()) {
+      setGroupChatError(t('chat.groupNameRequired'));
+      return;
+    }
     try {
       const result = await createChat.mutateAsync({
         name: groupName.trim(),
@@ -96,8 +103,8 @@ export function ChatsPage() {
       setGroupName(''); setGroupMembers([]); setGroupMemberInput(''); setShowNewChat(false);
       navigate(`/chat/${result.data.chatId}`);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail;
-      setGroupChatError(msg || 'Error creating group chat.');
+      const msg = extractApiError(err);
+      setGroupChatError(msg || t('chat.errorCreatingGroup'));
     }
   };
 
@@ -109,13 +116,13 @@ export function ChatsPage() {
       {/* Sidebar */}
       <aside className={`w-72 flex-shrink-0 border-r border-[#e8e2d9] bg-white flex flex-col ${activeId ? 'hidden sm:flex' : 'flex'}`}>
         <div className="px-4 py-3 border-b border-[#e8e2d9] flex items-center justify-between">
-          <h3 className="font-serif font-bold text-[#1c1714]">Messages</h3>
+          <h3 className="font-serif font-bold text-[#1c1714]">{t('chat.messagesHeader')}</h3>
           <button
             onClick={() => { setShowNewChat((v) => !v); setNewChatError(''); setGroupChatError(''); }}
             className={`text-xs px-3 py-1.5 rounded-full border cursor-pointer transition
               ${showNewChat ? 'bg-[#5b63d3] border-[#5b63d3] text-white' : 'border-[#5b63d3] text-[#5b63d3] bg-white hover:bg-[#5b63d3] hover:text-white'}`}
           >
-            + New
+            + {t('chat.new')}
           </button>
         </div>
 
@@ -128,14 +135,14 @@ export function ChatsPage() {
                 onClick={() => { setChatMode('direct'); setNewChatError(''); }}
                 className={`flex-1 py-1.5 text-xs font-medium transition cursor-pointer border-none ${chatMode === 'direct' ? 'bg-[#5b63d3] text-white' : 'bg-white text-[#7a6f68] hover:bg-[#faf7f2]'}`}
               >
-                Direct
+                {t('chat.direct')}
               </button>
               <button
                 type="button"
                 onClick={() => { setChatMode('group'); setGroupChatError(''); }}
                 className={`flex-1 py-1.5 text-xs font-medium transition cursor-pointer border-none ${chatMode === 'group' ? 'bg-[#5b63d3] text-white' : 'bg-white text-[#7a6f68] hover:bg-[#faf7f2]'}`}
               >
-                Group
+                {t('chat.group')}
               </button>
             </div>
 
@@ -147,7 +154,7 @@ export function ChatsPage() {
                     onChange={(e) => { setPeerNickname(e.target.value); setShowSuggestions(true); }}
                     onFocus={() => setShowSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                    placeholder="Enter @username…" required
+                    placeholder={t('chat.enterUsername')} required
                     className="w-full px-3 py-2 rounded-lg border border-[#e8e2d9] bg-[#faf7f2] text-sm focus:outline-none focus:border-[#5b63d3] focus:ring-2 focus:ring-[#5b63d3]/20 transition"
                   />
                   {showSuggestions && directSuggestions && directSuggestions.length > 0 && (
@@ -171,11 +178,11 @@ export function ChatsPage() {
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setShowNewChat(false)}
                     className="flex-1 py-2 rounded-lg border border-[#e8e2d9] text-sm text-[#7a6f68] cursor-pointer transition hover:border-[#5b63d3]">
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button type="submit" disabled={createChat.isPending || !peerNickname.trim()}
                     className="flex-1 py-2 rounded-lg bg-[#5b63d3] hover:bg-[#4951c4] text-white text-sm font-medium border-none cursor-pointer transition disabled:opacity-50">
-                    {createChat.isPending ? 'Starting…' : 'Start'}
+                    {createChat.isPending ? t('chat.startingChat') : t('chat.startChat')}
                   </button>
                 </div>
               </form>
@@ -184,7 +191,7 @@ export function ChatsPage() {
                 <input
                   autoFocus value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
-                  placeholder="Group name…" required
+                  placeholder={t('chat.groupNamePlaceholder')} required
                   className="w-full px-3 py-2 rounded-lg border border-[#e8e2d9] bg-[#faf7f2] text-sm focus:outline-none focus:border-[#5b63d3] focus:ring-2 focus:ring-[#5b63d3]/20 transition"
                 />
                 <div className="relative">
@@ -193,7 +200,7 @@ export function ChatsPage() {
                     onChange={(e) => { setGroupMemberInput(e.target.value); setShowGroupSuggestions(true); }}
                     onFocus={() => setShowGroupSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowGroupSuggestions(false), 150)}
-                    placeholder="Add members…"
+                    placeholder={t('chat.addMembersPlaceholder')}
                     className="w-full px-3 py-2 rounded-lg border border-[#e8e2d9] bg-[#faf7f2] text-sm focus:outline-none focus:border-[#5b63d3] focus:ring-2 focus:ring-[#5b63d3]/20 transition"
                   />
                   {showGroupSuggestions && groupSuggestions && groupSuggestions.length > 0 && (
@@ -233,11 +240,11 @@ export function ChatsPage() {
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setShowNewChat(false)}
                     className="flex-1 py-2 rounded-lg border border-[#e8e2d9] text-sm text-[#7a6f68] cursor-pointer transition hover:border-[#5b63d3]">
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button type="submit" disabled={createChat.isPending || !groupName.trim()}
                     className="flex-1 py-2 rounded-lg bg-[#5b63d3] hover:bg-[#4951c4] text-white text-sm font-medium border-none cursor-pointer transition disabled:opacity-50">
-                    {createChat.isPending ? 'Creating…' : 'Create'}
+                    {createChat.isPending ? t('chat.creatingGroup') : t('chat.createGroup')}
                   </button>
                 </div>
               </form>
@@ -256,7 +263,7 @@ export function ChatsPage() {
           {!isLoading && chats?.length === 0 && (
             <div className="flex flex-col items-center justify-center h-40 text-[#b0a9a1] gap-2">
               <span className="text-3xl">💬</span>
-              <p className="text-xs">No conversations yet</p>
+              <p className="text-xs">{t('chat.noConversations')}</p>
             </div>
           )}
           {chats?.map((chat) => (
@@ -279,12 +286,13 @@ export function ChatsPage() {
             chatId={activeId}
             chatName={activeChat?.name ?? `Chat ${activeId}`}
             isGroup={activeChat?.isGroup ?? true}
+            activeChat={activeChat}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-[#7a6f68] gap-3">
             <span className="text-5xl">💬</span>
-            <p className="text-sm font-medium">Select a conversation</p>
-            <p className="text-xs text-[#b0a9a1]">or start a new one with + New</p>
+            <p className="text-sm font-medium">{t('chat.selectConversation')}</p>
+            <p className="text-xs text-[#b0a9a1]">{t('chat.selectChatHint')}</p>
           </div>
         )}
       </section>
@@ -297,8 +305,9 @@ function ChatListItem({
 }: {
   chat: ChatPreview; isActive: boolean; unread: boolean; onClick: () => void;
 }) {
+  const {t} = useTranslation();
   const lastText = chat.lastMessage
-    ? (chat.lastMessage.isDeleted ? '[deleted]' : (chat.lastMessage.text ?? (chat.lastMessage.imageUrl ? '📷 Photo' : '')))
+      ? (chat.lastMessage.isDeleted ? `[${t('common.delete')}]` : (chat.lastMessage.text ?? (chat.lastMessage.imageUrl ? '📷' : '')))
     : null;
 
   const initials = (chat.name ?? '?').slice(0, 2).toUpperCase();
@@ -309,17 +318,25 @@ function ChatListItem({
       className={`w-full px-3 py-3 text-left border-none border-b border-[#f3ede4] cursor-pointer transition flex items-center gap-3
         ${isActive ? 'bg-[#eef0ff]' : 'bg-white hover:bg-[#faf7f2]'}`}
     >
-      <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold
-        ${isActive ? 'bg-[#5b63d3] text-white' : 'bg-[#e8e2d9] text-[#7a6f68]'}`}>
-        {initials}
-      </div>
+      {chat.avatarUrl ? (
+          <img
+              src={chat.avatarUrl}
+              alt={chat.name}
+              className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+          />
+      ) : (
+          <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold
+          ${isActive ? 'bg-[#5b63d3] text-white' : 'bg-[#e8e2d9] text-[#7a6f68]'}`}>
+            {initials}
+          </div>
+      )}
       <div className="flex-1 min-w-0">
         <div className={`text-sm font-semibold truncate ${isActive ? 'text-[#5b63d3]' : 'text-[#2d2926]'}`}>
           {chat.name || `Chat ${chat.chatId}`}
         </div>
         {lastText
           ? <div className={`text-xs truncate ${unread && !isActive ? 'text-[#2d2926] font-medium' : 'text-[#b0a9a1]'}`}>{lastText}</div>
-          : <div className="text-xs text-[#b0a9a1] italic">No messages yet</div>
+            : <div className="text-xs text-[#b0a9a1] italic">{t('chat.noMessages')}</div>
         }
       </div>
       {unread && !isActive && (
@@ -329,7 +346,9 @@ function ChatListItem({
   );
 }
 
-function ChatView({ chatId, chatName, isGroup }: { chatId: number; chatName: string; isGroup: boolean }) {
+function ChatView({chatId, chatName, isGroup, activeChat}: { chatId: number; chatName: string; isGroup: boolean; activeChat?: ChatPreview }) {
+  const {t} = useTranslation();
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
   const { items: history, hasMore, loadMore, isFetching } = useMessages(chatId);
   const [liveMessages, setLiveMessages] = useState<ChatMessage[]>([]);
   const [messagePatches, setMessagePatches] = useState<Record<number, Partial<ChatMessage>>>({});
@@ -425,7 +444,7 @@ function ChatView({ chatId, chatName, isGroup }: { chatId: number; chatName: str
   };
 
   const handleDeleteChat = async () => {
-    if (!confirm('Delete this chat for everyone? This cannot be undone.')) return;
+    if (!confirm(t('chat.deleteChatConfirmFull'))) return;
     await deleteChat.mutateAsync(chatId);
     navigate('/chat');
   };
@@ -440,21 +459,40 @@ function ChatView({ chatId, chatName, isGroup }: { chatId: number; chatName: str
         >
           ←
         </button>
-        <div className="w-8 h-8 rounded-full bg-[#e8e2d9] flex items-center justify-center text-xs font-bold text-[#7a6f68] flex-shrink-0">
-          {chatName.slice(0, 2).toUpperCase()}
-        </div>
+        {isGroup && activeChat?.avatarUrl ? (
+            <button
+                onClick={() => setShowGroupInfo(true)}
+                className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border-none p-0 bg-transparent cursor-pointer"
+                title={t('chat.groupInfo')}
+            >
+              <img src={activeChat.avatarUrl} alt={chatName} className="w-full h-full object-cover"/>
+            </button>
+        ) : (
+            <button
+                onClick={() => isGroup && setShowGroupInfo(true)}
+                disabled={!isGroup}
+                className="w-8 h-8 rounded-full bg-[#e8e2d9] flex items-center justify-center text-xs font-bold text-[#7a6f68] flex-shrink-0 border-none p-0 cursor-pointer disabled:cursor-default"
+            >
+              {chatName.slice(0, 2).toUpperCase()}
+            </button>
+        )}
         <div className="flex-1 min-w-0">
           {!isGroup ? (
             <Link to={`/u/${chatName}`} className="font-semibold text-sm text-[#1c1714] hover:text-[#5b63d3] transition truncate block">
               {chatName}
             </Link>
           ) : (
-            <div className="font-semibold text-sm text-[#1c1714] truncate">{chatName}</div>
+              <button
+                  onClick={() => setShowGroupInfo(true)}
+                  className="font-semibold text-sm text-[#1c1714] hover:text-[#5b63d3] transition truncate block w-full text-left bg-transparent border-none p-0 cursor-pointer"
+              >
+                {chatName}
+              </button>
           )}
           {!isGroup && (
             <div className="flex items-center gap-1">
               <span className={`w-1.5 h-1.5 rounded-full ${isPeerOnline ? 'bg-green-500' : 'bg-[#d0c9c1]'}`} />
-              <span className="text-xs text-[#b0a9a1]">{isPeerOnline ? 'Online' : 'Offline'}</span>
+              <span className="text-xs text-[#b0a9a1]">{isPeerOnline ? t('chat.online') : t('chat.offline')}</span>
             </div>
           )}
         </div>
@@ -462,7 +500,7 @@ function ChatView({ chatId, chatName, isGroup }: { chatId: number; chatName: str
           onClick={handleDeleteChat}
           disabled={deleteChat.isPending}
           className="text-xs text-[#b0a9a1] hover:text-red-500 bg-transparent border-none cursor-pointer transition disabled:opacity-50 flex-shrink-0"
-          title="Delete chat"
+          title={t('chat.deleteChat')}
         >
           🗑
         </button>
@@ -473,14 +511,14 @@ function ChatView({ chatId, chatName, isGroup }: { chatId: number; chatName: str
         {hasMore && (
           <button onClick={() => loadMore()} disabled={isFetching}
             className="self-center px-4 py-1.5 text-xs rounded-full border border-[#e8e2d9] bg-white text-[#7a6f68] cursor-pointer hover:border-[#5b63d3] transition disabled:opacity-50">
-            {isFetching ? 'Loading…' : 'Load older messages'}
+            {isFetching ? t('common.loading') : t('chat.loadOlder')}
           </button>
         )}
 
         {allMessages.length === 0 && !isFetching && (
           <div className="flex-1 flex flex-col items-center justify-center text-[#b0a9a1] gap-2 py-16">
             <span className="text-4xl">👋</span>
-            <p className="text-sm">No messages yet — say hello!</p>
+            <p className="text-sm">{t('chat.sayHello')}</p>
           </div>
         )}
 
@@ -494,7 +532,7 @@ function ChatView({ chatId, chatName, isGroup }: { chatId: number; chatName: str
                   <button
                     onClick={() => handleDeleteMessage(m.messageId)}
                     className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-[#b0a9a1] hover:text-red-500 bg-transparent border-none cursor-pointer p-1 flex-shrink-0 order-first"
-                    title="Delete message"
+                    title={t('chat.deleteMessage')}
                   >
                     🗑
                   </button>
@@ -509,7 +547,7 @@ function ChatView({ chatId, chatName, isGroup }: { chatId: number; chatName: str
                   )}
                   <div className="text-sm break-words leading-relaxed">
                     {alreadyDeleted
-                      ? <i className={isOwn ? 'opacity-60 text-xs' : 'text-[#b0a9a1] text-xs'}>[message deleted]</i>
+                        ? <i className={isOwn ? 'opacity-60 text-xs' : 'text-[#b0a9a1] text-xs'}>{t('chat.messageDeleted')}</i>
                       : m.imageUrl
                         ? <img src={m.imageUrl} alt="photo" className="max-w-full rounded-lg max-h-64 object-contain" />
                         : m.text}
@@ -539,7 +577,7 @@ function ChatView({ chatId, chatName, isGroup }: { chatId: number; chatName: str
           disabled={!connected || uploadingImage}
           onClick={() => fileInputRef.current?.click()}
           className="w-10 h-10 rounded-full border border-[#e8e2d9] bg-white text-[#7a6f68] hover:border-[#5b63d3] hover:text-[#5b63d3] flex items-center justify-center cursor-pointer transition disabled:opacity-40 flex-shrink-0 text-base"
-          title="Send photo"
+          title={t('chat.sendPhoto')}
         >
           {uploadingImage ? '…' : '📷'}
         </button>
@@ -547,7 +585,7 @@ function ChatView({ chatId, chatName, isGroup }: { chatId: number; chatName: str
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={connected ? 'Type a message…' : 'Connecting…'}
+          placeholder={connected ? t('chat.typeMessage') : t('chat.connecting')}
           disabled={!connected}
           className="flex-1 px-4 py-2.5 rounded-full border border-[#e8e2d9] bg-[#faf7f2] text-sm focus:outline-none focus:border-[#5b63d3] focus:ring-2 focus:ring-[#5b63d3]/20 transition disabled:opacity-50"
         />
@@ -559,6 +597,9 @@ function ChatView({ chatId, chatName, isGroup }: { chatId: number; chatName: str
           ↑
         </button>
       </form>
+      {showGroupInfo && activeChat && (
+          <GroupInfoModal chat={activeChat} onClose={() => setShowGroupInfo(false)}/>
+      )}
     </>
   );
 }
