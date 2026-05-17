@@ -33,6 +33,7 @@
 | Real-time | Spring WebSocket + STOMP over SockJS |
 | Сборка | Gradle |
 | Утилиты | Lombok, Bucket4j (rate limiting) |
+| Интернационализация | i18next + react-i18next (en / ru) |
 
 ---
 
@@ -98,6 +99,8 @@ npm run dev
 | PostgreSQL | `localhost:5432` | База данных `whitenights` |
 | MinIO Console | `http://localhost:9001` | Управление файловым хранилищем |
 | MinIO API | `http://localhost:9000` | S3-совместимый API |
+
+Язык интерфейса (EN/RU) переключается в верхней панели; выбор сохраняется в `localStorage` под ключом `lang`. По умолчанию используется английский.
 
 ---
 
@@ -281,6 +284,7 @@ Authorization: Bearer <access_token>
 | GET | `/api/tracker?month=YYYY-MM` | Записи за месяц |
 | PUT | `/api/tracker/:date` | Upsert записи `{ pagesRead? }` (дата в формате `YYYY-MM-DD`) |
 | DELETE | `/api/tracker/:date` | Удалить запись |
+| GET | `/api/users/:nickname/tracker/monthly-summary?month=YYYY-MM` | Сумма прочитанных страниц за месяц → `{ month, pagesRead }`. Используется для яркой плашки на профиле под основной информацией. Если `month` не указан — текущий. |
 
 ---
 
@@ -292,6 +296,8 @@ Authorization: Bearer <access_token>
 | POST | `/api/chats` | Создать чат: `{ peerId }` (1:1) или `{ name, memberIds[] }` (группа) |
 | GET | `/api/chats/:id/messages?cursor=&limit=` | История сообщений |
 | POST | `/api/chats/:id/upload-image` | Отправить изображение (multipart `file`); загружает в MinIO и рассылает через WebSocket |
+| GET | `/api/chats/:id/members` | Список участников группового чата `[{ userId, nickname, avatarUrl, role, joinedAt }]`. Используется для кликабельного списка участников с переходом на их профили. |
+| POST | `/api/chats/:id/avatar` | Загрузить аватар группового чата (multipart `file`, только владелец, только групповой чат). Возвращает обновлённый `ChatResponse` с `avatarUrl`. |
 | POST | `/api/chats/:id/members` | Добавить участника `{ userId }` (только владелец группы) |
 | DELETE | `/api/chats/:id/members/:userId` | Удалить участника (только владелец) |
 | DELETE | `/api/messages/:id` | Удалить своё сообщение (мягкое удаление) |
@@ -304,6 +310,8 @@ Authorization: Bearer <access_token>
 |---|---|---|
 | POST | `/api/reports` | Пожаловаться `{ targetType: post/comment/user, targetId, reason }` |
 | GET | `/api/reports/me` | Мои репорты |
+
+`targetType` принимает значения `post`, `comment` и `user` — на любой из этих сущностей можно открыть жалобу с фронтенда (кнопка «⚑ Report» на постах, комментариях/ответах и профилях).
 
 Причина: 10–1000 символов. Дублирующий ожидающий репорт возвращает 409.
 
@@ -320,6 +328,15 @@ Authorization: Bearer <access_token>
 
 Действия (`action`): `block_post`, `warn_user`, `ban_user`, `reject`.
 
+Ответ репорта обогащён метаданными для построения кликабельных ссылок в карточке жалобы:
+
+| Поле | Назначение |
+|---|---|
+| `reporterUserId`, `reporterNickname` | автор жалобы (ссылка `/u/{nickname}`) |
+| `targetUserNickname` | если жалоба на пользователя — ссылка `/u/{nickname}` |
+| `targetPostTitle` | если жалоба на пост — ссылка `/posts/{targetId}` |
+| `targetCommentPostId`, `targetCommentText` | если жалоба на комментарий — ссылка `/posts/{targetCommentPostId}#comment-{targetId}` |
+
 ---
 
 ### Администрирование (роль: admin)
@@ -329,7 +346,9 @@ Authorization: Bearer <access_token>
 | POST | `/api/admin/users/:id/role` | Изменить роль `{ role: user/moderator/admin }` |
 | POST | `/api/admin/users/:id/unban` | Разбанить |
 | DELETE | `/api/admin/users/:id` | Удалить аккаунт |
-| GET | `/api/admin/stats` | Статистика (пользователи, посты, репорты, чаты) |
+| GET | `/api/admin/stats` | Статистика → `{ users, posts, pendingReports, chats, moderators, onlineUsers }`. Используется в разделе «Статистика», который виден только администраторам. |
+| GET | `/api/admin/support/messages?limit=` | Список всех обращений в поддержку (новейшие первые) с автором, темой, сообщением, статусом (`open`/`resolved`) и ответом администратора, если есть. |
+| POST | `/api/admin/support/messages/:id/reply` | Ответ администратора `{ response }`. Сохраняет текст ответа, проставляет `respondedAt` и `respondedBy`, переводит тикет в `resolved`. Пользователь видит ответ в своей истории обращений. |
 
 Понижение последнего администратора запрещено (возвращает 403).
 
@@ -341,7 +360,8 @@ Authorization: Bearer <access_token>
 |---|---|---|
 | GET | `/api/users/me/saved?cursor=&limit=` | Сохранённые посты |
 | POST | `/api/users/me/password` | Смена пароля `{ currentPassword, newPassword }` |
-| POST | `/api/support` | Написать в поддержку `{ subject?, message }` |
+| POST | `/api/support/messages` | Написать в поддержку `{ subject?, message }` |
+| GET | `/api/support/messages/me` | Мои обращения в поддержку с ответами администратора (если есть) |
 | DELETE | `/api/users/me` | Удалить аккаунт |
 
 ---
@@ -418,6 +438,8 @@ Content-Type: application/json
 | V14 | Поддержка вложенных комментариев (ответов) |
 | V15 | Поле `text` в messages стало nullable; добавлена колонка `image_url` |
 | V16 | Таблица `user_blocks` (блокировка пользователей) |
+| V17 | Колонка `avatar_url` в `chats` (аватарка групповых чатов) |
+| V18 | Таблица `support_messages` (тикеты поддержки + ответы администратора) |
 
 ---
 
@@ -429,7 +451,7 @@ MinIO используется как S3-совместимое хранилищ
 |---|---|
 | `avatars` | Аватары пользователей |
 | `posts` | Изображения к постам |
-| `chat` | Изображения, отправленные в чатах |
+| `chat` | Изображения, отправленные в чатах, и аватарки групповых чатов |
 
 Файлы принимаются только с `Content-Type: image/*`. Все бакеты создаются автоматически при первой загрузке.
 
